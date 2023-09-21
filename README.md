@@ -1,6 +1,7 @@
 # experimental
 Experimental projects sliced out of my personal (private) game engine project. See `Tools/header/Tools`.
 
+--------
 ### BitEnum.hpp
 A strong type for enum classes with bitfield operations, similar to adding global overloads that check for a magic enum value or type trait class.
 
