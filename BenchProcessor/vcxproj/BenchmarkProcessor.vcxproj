@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{f4cd5e3a-698a-48ce-a068-9fdd4c31483d}</ProjectGuid>
+    <CtpProjectName>BenchmarkProcessor</CtpProjectName>
+    <CtpProjectType>Application</CtpProjectType>
+  </PropertyGroup>
+
+  <Import Project="..\..\ctp.props" />
+
+  <ItemGroup>
+    <ClInclude Include="$(Source)BenchmarkResultsParse.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(Source)main.cpp" />
+    <ClCompile Include="$(Source)BenchmarkResultsParse.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

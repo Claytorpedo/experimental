@@ -13,16 +13,21 @@
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
+# Tracy sessions
+*.tracy
+
 # Mono auto generated files
 mono_crash.*
 
 # Build results
+[Uu]nitTest/
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
 x64/
 x86/
+[Bb]uild/
 [Ww][Ii][Nn]32/
 [Aa][Rr][Mm]/
 [Aa][Rr][Mm]64/
@@ -31,6 +36,13 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
+[Ll]ib/
+*.out
+*.o
+[Bb]ench[Pp]rocessor/temp/
+
+#vcpkg
+vcpkg_installed/
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/

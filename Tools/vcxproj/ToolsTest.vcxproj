@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{1c05a9f9-030b-45c9-a658-b87b4d27995f}</ProjectGuid>
+    <CtpProjectName>ToolsTest</CtpProjectName>
+    <CtpProjectType>Test</CtpProjectType>
+    <CtpIncludes>Tools</CtpIncludes>
+  </PropertyGroup>
+  <Import Project="..\..\ctp.props" />
+  <ItemGroup>
+    <ClCompile Include="$(Test)catch_main.cpp" />
+    <ClCompile Include="$(Test)ranges/erase_test.cpp" />
+    <ClCompile Include="$(Test)ranges/remove_test.cpp" />
+    <ClCompile Include="$(Test)BitEnumTest.cpp" />
+    <ClCompile Include="$(Test)iterator_test.cpp" />
+    <ClCompile Include="$(Test)ScopeTest.cpp" />
+    <ClCompile Include="$(Test)StrongTypeTest.cpp" />
+    <ClCompile Include="$(Test)type_traits_test.cpp" />
+    <ClCompile Include="$(Test)VectorizerTest.cpp" />
+    <ClCompile Include="$(Test)charconvtest.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

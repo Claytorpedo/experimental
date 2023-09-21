@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Src">
+      <UniqueIdentifier>{0B279200-7AA1-44D1-B9B6-75CC7DC1F919}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(Source)main.cpp" Filter="Src"/>
+    <ClInclude Include="$(Source)BenchmarkResultsParse.hpp" Filter="Src" />
+    <ClCompile Include="$(Source)BenchmarkResultsParse.cpp" Filter="Src" />
+  </ItemGroup>
+</Project>

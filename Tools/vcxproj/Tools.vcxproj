@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{59ff42d5-a1c2-4930-ad83-a9d389e55229}</ProjectGuid>
+    <CtpProjectName>Tools</CtpProjectName>
+    <CtpProjectType>Lib</CtpProjectType>
+  </PropertyGroup>
+
+  <Import Project="..\..\ctp.props" />
+
+  <ItemGroup>
+    <ClInclude Include="$(Interface)ranges/erase.hpp" />
+    <ClInclude Include="$(Interface)ranges/remove.hpp" />
+    <ClInclude Include="$(Interface)BitEnum.hpp" />
+    <ClInclude Include="$(Interface)charconv.hpp" />
+    <ClInclude Include="$(Interface)config.hpp" />
+    <ClInclude Include="$(Interface)concepts.hpp" />
+    <ClInclude Include="$(Interface)CrtpHelper.hpp" />
+    <ClInclude Include="$(Interface)debug.hpp" />
+    <ClInclude Include="$(Interface)iterator.hpp" />
+    <ClInclude Include="$(Interface)utility.hpp" />
+    <ClInclude Include="$(Interface)type_traits.hpp" />
+    <ClInclude Include="$(Interface)scope.hpp" />
+    <ClInclude Include="$(Interface)StrongType.hpp" />
+    <ClInclude Include="$(Interface)Vectorizer.hpp" />
+    <ClInclude Include="$(Interface)windows.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(Source)debug.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

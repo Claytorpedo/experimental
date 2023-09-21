@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Src">
+      <UniqueIdentifier>{009ce03d-3380-44d2-a002-12e76e687fd7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Inc">
+      <UniqueIdentifier>{9a9403bc-ba8f-4b80-9bee-0645e294e6a7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Inc\ranges">
+      <UniqueIdentifier>{16982211-5e1c-4793-9773-74a08ccafe83}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(Interface)ranges/erase.hpp" Filter="Inc\ranges" />
+    <ClInclude Include="$(Interface)ranges/remove.hpp" Filter="Inc\ranges" />
+    <ClInclude Include="$(Interface)BitEnum.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)charconv.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)config.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)concepts.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)CrtpHelper.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)debug.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)iterator.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)scope.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)StrongType.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)type_traits.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)utility.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)Vectorizer.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)windows.hpp" Filter="Inc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(Source)debug.cpp" Filter="Src" />
+  </ItemGroup>
+</Project>

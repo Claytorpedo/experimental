@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Vcpkg">
+    <VcpkgEnabled>true</VcpkgEnabled>
+    <VcpkgEnableManifest>true</VcpkgEnableManifest>
+    <VcpkgManifestInstall>true</VcpkgManifestInstall>
+    <VcpkgAutoLink>true</VcpkgAutoLink>
+    <VcpkgUseStatic>true</VcpkgUseStatic>
+    <VcpkgConfiguration Condition="'$(CtpConfig)'=='Release'">Release</VcpkgConfiguration>
+    <VcpkgConfiguration Condition="'$(CtpConfig)'=='Debug'">Debug</VcpkgConfiguration>
+    <VcpkgTriplet>$(CtpArch)-$(CtpPlatform.ToLower())-static</VcpkgTriplet>
+  </PropertyGroup>
+
+  <Target Name="ValidateVcpkgTriplet" BeforeTargets="BeforeBuild">
+    <Error Condition="$(CtpArch)=='' Or $(CtpPlatform)==''" Text="ctp.props must be included first." />
+  </Target>
+
+<!--
+  <Import Project="$(External)vcpkg\scripts\buildsystems\msbuild\vcpkg.props" />
+  <Import Project="$(External)vcpkg\scripts\buildsystems\msbuild\vcpkg.targets" /> -->
+
+  <!-- Visual Studio seems to not always find vcpkg files automatically. -->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(TopDir)vcpkg_installed\$(VcpkgTriplet)\$(VcpkgTriplet)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+</Project>

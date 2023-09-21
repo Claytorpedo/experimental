@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Src">
+      <UniqueIdentifier>{009ce03d-3380-44d2-a002-12e76e687fd7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Src\ranges">
+      <UniqueIdentifier>{64b77baf-6453-4a63-8893-f1a3ecacbc43}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(Test)catch_main.cpp" Filter="Src" />
+    <ClCompile Include="$(Test)ranges/erase_test.cpp" Filter="Src\ranges" />
+    <ClCompile Include="$(Test)ranges/remove_test.cpp" Filter="Src\ranges" />
+    <ClCompile Include="$(Test)BitEnumTest.cpp" Filter="Src" />
+    <ClCompile Include="$(Test)iterator_test.cpp" Filter="Src" />
+    <ClCompile Include="$(Test)ScopeTest.cpp" Filter="Src" />
+    <ClCompile Include="$(Test)StrongTypeTest.cpp" Filter="Src" />
+    <ClCompile Include="$(Test)type_traits_test.cpp" Filter="Src" />
+    <ClCompile Include="$(Test)VectorizerTest.cpp" Filter="Src" />
+    <ClCompile Include="$(Test)charconvtest.cpp" Filter="Src" />
+  </ItemGroup>
+</Project>

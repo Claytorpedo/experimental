@@ -1,0 +1,4 @@
+[submodule "benchmark"]
+	path = External/benchmark
+	url = https://github.com/google/benchmark.git
+	ignore = dirty

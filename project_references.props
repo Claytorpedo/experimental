@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- Includes. -->
+  <ItemDefinitionGroup Condition="'$(CtpIncludes)'!=''">
+    <ClCompile>
+      <!-- Split up CtpIncludes lists like "one;two" to include their header folders. -->
+      <AdditionalIncludeDirectories>
+     $(TopDir)$([MSBuild]::Unescape($(CtpIncludes.Replace(';','\header;$(TopDir)'))))\header;
+     %(AdditionalIncludeDirectories)
+     </AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- References -->
+  <ItemGroup Condition="$(CtpIncludes.Contains('Tools'))">
+    <ProjectReference Include="$(TopDir)Tools\vcxproj\Tools.vcxproj">
+      <Project>{59ff42d5-a1c2-4930-ad83-a9d389e55229}</Project>
+    </ProjectReference>
+  </ItemGroup>
+</Project>
