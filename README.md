@@ -1,7 +1,12 @@
 # experimental
 Experimental projects sliced out of my personal (private) game engine project. See `Tools/header/Tools`.
 
+This is generally using MSVC latest or clang trunk.
+
 --------
+### ranges/remove.hpp ranges/erase.hpp
+Provides unstable `remove`, `remove_if`, and `erase`, `erase_if` operations.
+
 ### BitEnum.hpp
 A strong type for enum classes with bitfield operations, similar to adding global overloads that check for a magic enum value or type trait class.
 
