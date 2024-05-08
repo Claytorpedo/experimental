@@ -14,6 +14,7 @@
     <ClCompile Include="$(Test)ranges/remove_test.cpp" Filter="Src\ranges" />
     <ClCompile Include="$(Test)BitEnumTest.cpp" Filter="Src" />
     <ClCompile Include="$(Test)iterator_test.cpp" Filter="Src" />
+    <ClCompile Include="$(Test)reverse_iterator_test.cpp" Filter="Src" />
     <ClCompile Include="$(Test)ScopeTest.cpp" Filter="Src" />
     <ClCompile Include="$(Test)StrongTypeTest.cpp" Filter="Src" />
     <ClCompile Include="$(Test)type_traits_test.cpp" Filter="Src" />

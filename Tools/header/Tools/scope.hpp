@@ -1,7 +1,9 @@
 #ifndef INCLUDE_CTP_TOOLS_SCOPE_HPP
 #define INCLUDE_CTP_TOOLS_SCOPE_HPP
 
-#include <exception>
+#include "config.hpp"
+#include "exception.hpp"
+
 #include <limits>
 #include <type_traits>
 #include <utility>
@@ -15,17 +17,29 @@ struct ExitPolicy {
 	constexpr bool shouldExecute() const noexcept { return should_execute_; }
 };
 
+#if CTP_USE_EXCEPTIONS
 struct FailPolicy {
-	int numExceptions = std::uncaught_exceptions();
-	void release() noexcept { numExceptions = (std::numeric_limits<int>::max)(); }
-	bool shouldExecute() const noexcept { return numExceptions < std::uncaught_exceptions(); }
+	int numExceptions = ctp::uncaught_exceptions();
+	constexpr void release() noexcept { numExceptions = (std::numeric_limits<int>::max)(); }
+	constexpr bool shouldExecute() const noexcept { return numExceptions < ctp::uncaught_exceptions(); }
 };
+#else
+// Will never run with exceptions disabled.
+struct FailPolicy {
+	constexpr void release() noexcept {}
+	constexpr bool shouldExecute() const noexcept { return false; }
+};
+#endif
 
+#if CTP_USE_EXCEPTIONS
 struct SuccessPolicy {
-	int numExceptions = std::uncaught_exceptions();
-	void release() noexcept { numExceptions = -1; }
-	bool shouldExecute() const noexcept { return numExceptions >= std::uncaught_exceptions(); }
+	int numExceptions = ctp::uncaught_exceptions();
+	constexpr void release() noexcept { numExceptions = -1; }
+	constexpr bool shouldExecute() const noexcept { return numExceptions >= ctp::uncaught_exceptions(); }
 };
+#else
+struct SuccessPolicy : ExitPolicy {};
+#endif
 
 template <typename F, typename Policy>
 class [[nodiscard]] ScopeExit : Policy {
@@ -75,7 +89,7 @@ template<typename C> ScopeFail(C&& c) -> ScopeFail<C>;
 
 // ScopeSuccess calls a function upon leaving scope in which it was created if no exception was thrown, unless release() was called.
 template <typename F>
-struct ScopeSuccess : detail::ScopeExit<F, detail::SuccessPolicy>{
+struct ScopeSuccess : detail::ScopeExit<F, detail::SuccessPolicy> {
 	using Base = detail::ScopeExit<F, detail::SuccessPolicy>;
 	using Base::Base;
 };

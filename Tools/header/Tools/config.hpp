@@ -35,35 +35,35 @@
 /* -------------------- compiler -------------------- */
 #ifdef __clang__
 
- #if __has_builtin(__builtin_assume)
- #define CTP_ASSUME(expr) __builtin_assume(!!(expr))
- #endif
+#if __has_builtin(__builtin_assume)
+#define CTP_ASSUME(expr) __builtin_assume(!!(expr))
+#endif
 
- #if __has_builtin(__builtin_constant_p)
- #define CTP_IS_CONSTEXPR(expr) __builtin_constant_p(expr)
- #endif
+#if __has_builtin(__builtin_constant_p)
+#define CTP_IS_CONSTEXPR(expr) __builtin_constant_p(expr)
+#endif
 
 #elif defined __GNUC__
 
- #define CTP_ASSUME(expr) ((expr) ? static_cast<void>(0) : __builtin_unreachable())
- #if __has_builtin(__builtin_constant_p)
- #define CTP_IS_CONSTEXPR(expr) __builtin_constant_p(expr)
- #endif
+#define CTP_ASSUME(expr) ((expr) ? static_cast<void>(0) : __builtin_unreachable())
+#if __has_builtin(__builtin_constant_p)
+#define CTP_IS_CONSTEXPR(expr) __builtin_constant_p(expr)
+#endif
 
 #elif defined __EMSCRIPTEN__
 
- #define CTP_ASSUME(expr)
- #define CTP_BREAK_INTO_DEBUGGER __builtin_trap()
+#define CTP_ASSUME(expr)
+#define CTP_BREAK_INTO_DEBUGGER __builtin_trap()
 
 #elif defined _MSC_VER
 
- #define CTP_ASSUME(expr) __assume(!!(expr))
- #define CTP_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
+#define CTP_ASSUME(expr) __assume(!!(expr))
+#define CTP_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
 
- #define CTP_BREAK_INTO_DEBUGGER __debugbreak()
+#define CTP_BREAK_INTO_DEBUGGER __debugbreak()
 
 #else
- #error "Unknown compiler."
+#error "Unknown compiler."
 #endif
 
 /* -------------------- defaults -------------------- */
@@ -82,17 +82,22 @@
 #endif
 
 #ifndef CTP_NOEXCEPT_ALLOCS
+// Old, stop using this.
 #define CTP_NOEXCEPT_ALLOCS noexcept
+// Use like noexcept(CTP_NOTHROW_ALLOCS)
+#define CTP_NOTHROW_ALLOCS true
 #endif
 
 #ifndef CTP_BREAK_INTO_DEBUGGER
- #include <signal.h>
- #ifdef SIGTRAP
-  #define CTP_BREAK_INTO_DEBUGGER raise(SIGTRAP)
- #else
-  #define CTP_BREAK_INTO_DEBUGGER raise(SIGABRT)
- #endif
+#include <signal.h>
+#ifdef SIGTRAP
+#define CTP_BREAK_INTO_DEBUGGER raise(SIGTRAP)
+#else
+#define CTP_BREAK_INTO_DEBUGGER raise(SIGABRT)
 #endif
+#endif
+
+/* --------------------- general --------------------- */
 
 #ifndef CTP_VAR_CONCAT
 #define CTP_VAR_CONCAT(x, y) CTP_VAR_CONCAT_INDIRECT(x, y)
@@ -121,15 +126,21 @@
 #define CTP_NO_EXCEPTIONS 0
 #endif
 
+#if CTP_NO_EXCEPTIONS
+#define CTP_USE_EXCEPTIONS 0
+#else
+#define CTP_USE_EXCEPTIONS 1
+#endif
+
 #ifndef CTP_NOEXCEPT
 # if CTP_NO_EXCEPTIONS
 // Helper for maybe-noexcept functions that is CTP_NO_EXCEPTIONS-aware.
 // If exceptions are disabled, will always result in noexcept(true)
-# define CTP_NOEXCEPT(Cond) noexcept
+# define CTP_NOEXCEPT(...) noexcept
 # else
 // Helper for maybe-noexcept functions that is CTP_NO_EXCEPTIONS-aware.
 // If exceptions are disabled, will always result in noexcept(true)
-# define CTP_NOEXCEPT(Cond) noexcept(Cond)
+# define CTP_NOEXCEPT(...) noexcept(__VA_ARGS__)
 # endif
 #endif
 

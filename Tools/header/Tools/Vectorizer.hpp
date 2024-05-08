@@ -6,10 +6,10 @@
 #include "CrtpHelper.hpp"
 #include "debug.hpp"
 #include "iterator.hpp"
+#include "reverse_iterator.hpp"
 #include "type_traits.hpp"
 
 #include <array>
-#include <iterator> // TODO: write a reverse_iterator to avoid this heavy include
 
 namespace ctp {
 
@@ -22,6 +22,7 @@ namespace ctp {
 //    int x, y;
 //    static constexpr auto get_vectorizer_list() noexcept { return make_vectorizer_list(&Vec::x, &Vec::y); }
 // };
+// Derived classes should also implement, declare as defaulted, or explicitly delete the comparison operators.
 template <typename Derived, typename ValueType, std::size_t N>
 	requires (N > 0)
 class Vectorizer;
@@ -49,7 +50,7 @@ class vectorizer_iterator : public iterator_t<vectorizer_iterator<Derived, Value
 
 	template <typename D>
 	struct validate_get_vector_list {
-		using derived_type = remove_inner_const_t<D>;
+		using derived_type = std::remove_const_t<D>;
 
 		static_assert(HasMemberVectorizerList<derived_type>,
 			"Must define static function get_vectorizer_list for use in constant expressions.");
@@ -70,8 +71,8 @@ class vectorizer_iterator : public iterator_t<vectorizer_iterator<Derived, Value
 		static_assert(std::same_as<typename MemberTypes::derived, derived_type>,
 			"get_vectorizer_list returned a pointer-to-member type to an unexpected derived class.");
 		static_assert(std::same_as<MemberType, typename derived_type::value_type> ||
-		              std::same_as<std::remove_extent_t<MemberType>, typename derived_type::value_type> ||
-		              concepts::HasData<MemberType, ValueType*>,
+			std::same_as<std::remove_extent_t<MemberType>, typename derived_type::value_type> ||
+			concepts::HasData<MemberType, ValueType*>,
 			"get_vectorizer_list returned a pointer-to-member type different from value_type.");
 	};
 
@@ -94,7 +95,7 @@ class vectorizer_iterator : public iterator_t<vectorizer_iterator<Derived, Value
 				// The below funky syntax coerces MSVC into recognizing that we have an N-sized array
 				// and it is valid to choose a non-zero index.
 				if constexpr (std::is_const_v<ValueType>) {
-					add_inner_const_t<typename VectorListTypes::MemberType>* data = &(d_->*member_list[0]);
+					std::add_const_t<typename VectorListTypes::MemberType>* data = &(d_->*member_list[0]);
 					return std::addressof((*data)[i_]);
 				} else {
 					typename VectorListTypes::MemberType* data = &(d_->*member_list[0]);
@@ -110,7 +111,7 @@ class vectorizer_iterator : public iterator_t<vectorizer_iterator<Derived, Value
 		ctpAssert(d_ != nullptr); // invalid iterator
 		ctpAssert(i_ <= d_->size()); // peeking out of range
 
-		if CTP_IS_CONSTEVAL {
+		if CTP_IS_CONSTEVAL{
 			return consteval_peek();
 		} else {
 			return reinterpret_cast<ValueType*>(d_) + i_;
@@ -118,11 +119,11 @@ class vectorizer_iterator : public iterator_t<vectorizer_iterator<Derived, Value
 	}
 
 	// conversion from non-const iterator to const iterator.
-	friend class vectorizer_iterator<Derived, remove_inner_const<ValueType>>;
+	friend class vectorizer_iterator<Derived, std::add_const_t<ValueType>>;
 	using nonconst_t = ::std::conditional_t<
-		std::is_same_v<ValueType, remove_inner_const<ValueType>>,
+		std::is_same_v<ValueType, std::remove_const_t<ValueType>>,
 		nonesuch,
-		vectorizer_iterator<Derived, remove_inner_const<ValueType>>>;
+		vectorizer_iterator<Derived, std::remove_const_t<ValueType>>>;
 public:
 	constexpr vectorizer_iterator() noexcept = default;
 	constexpr vectorizer_iterator(Derived& d, std::size_t i = 0) noexcept : d_{&d}, i_{i} {}
@@ -150,7 +151,7 @@ template <typename ValueType, std::size_t Size, typename... Ts>
 concept MatchingConstructorValues = requires {
 	requires (Size != 1);
 	requires (sizeof...(Ts) == Size);
-	//requires concepts::AllExactlySame<Ts...>;
+//requires concepts::AllExactlySame<Ts...>;
 	requires concepts::AllConvertibleTo<ValueType, Ts...>;
 };
 
@@ -169,8 +170,8 @@ public:
 
 	using iterator = vectorizer_iterator<derived_type, value_type>;
 	using const_iterator = vectorizer_iterator<const derived_type, const value_type>;
-	using reverse_iterator = std::reverse_iterator<iterator>;
-	using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+	using reverse_iterator = ctp::reverse_iterator<iterator>;
+	using const_reverse_iterator = ctp::reverse_iterator<const_iterator>;
 
 	static constexpr size_type Size = N;
 
@@ -189,7 +190,7 @@ public:
 	}
 
 	constexpr Vectorizer() noexcept = default;
-	
+
 	// Technically these helper constructors should probably not be able to be constexpr, (since
 	// Derived, and hence its values, are not initialized yet) but MSVC seems to accept them...
 	explicit constexpr Vectorizer(value_type arg) noexcept {
@@ -198,7 +199,7 @@ public:
 	}
 	template <class... Ts>
 		requires vectorizer_detail::MatchingConstructorValues<ValueType, N, Ts...>
-	explicit constexpr Vectorizer(Ts&&... args) noexcept {
+	constexpr Vectorizer(Ts&&... args) noexcept {
 		auto it = begin();
 		(..., void(*it++ = forward<Ts>(args)));
 	}
@@ -214,64 +215,63 @@ public:
 	constexpr const_iterator end() const noexcept { return const_iterator{this->derived(), Size}; }
 	constexpr const_iterator cend() const noexcept { return end(); }
 
-	constexpr reverse_iterator rbegin() noexcept { return std::make_reverse_iterator(end()); }
-	constexpr const_reverse_iterator rbegin() const noexcept { return std::make_reverse_iterator(cend()); }
+	constexpr reverse_iterator rbegin() noexcept { return reverse_iterator{end()}; }
+	constexpr const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator{cend()}; }
 	constexpr const_reverse_iterator crbegin() const noexcept { return rbegin(); }
-	constexpr reverse_iterator rend() noexcept { return std::make_reverse_iterator(begin()); }
-	constexpr const_reverse_iterator rend() const noexcept { return std::make_reverse_iterator(cbegin()); }
+	constexpr reverse_iterator rend() noexcept { return reverse_iterator{begin()}; }
+	constexpr const_reverse_iterator rend() const noexcept { return const_reverse_iterator{cbegin()}; }
 	constexpr const_reverse_iterator crend() const noexcept { return rend(); }
 
 	// Allow derived classes to generate comparison operators.
+	// Annoying that these (currently) can't be protected, or defaulted comparison operators can't be generated.
 	friend constexpr auto operator<=>(const Vectorizer&, const Vectorizer&) noexcept {
 		return std::strong_ordering::equal;
 	}
 	friend constexpr bool operator==(const Vectorizer&, const Vectorizer&) noexcept { return true; }
 protected:
+	// Helper function to apply an op to each element in this vector.
+	// Op takes elements from this as the first argument, then any other values, and returns a value for the new vector.
+	template <typename... Ts, typename Op>
+		requires (!VectorizerCompatible<first_element_t<Ts...>, value_type, Size>)
+	[[nodiscard]] constexpr auto reduce_to_vec(Op&& op, Ts&&... ts) const noexcept {
+		derived_type result;
+		auto it = this->begin();
+		for (std::size_t i = 0; i < Size; ++i)
+			result[i] = op(*it++, ts...);
+		return result;
+	}
+	// Helper function to apply an op to each element in this vector.
+	// Op takes elements from this as the first argument, then any other vectors, and returns a value for the new vector.
 	template <VectorizerCompatible<value_type, Size>... Vs, typename Op>
-	constexpr auto& n_ary_op(this auto& self, Op&& op, Vs&&... vs) noexcept {
+	[[nodiscard]] constexpr auto reduce_to_vec(Op&& op, Vs&&... vs) const noexcept {
+		derived_type result;
+		auto it = this->begin();
+		for (std::size_t i = 0; i < Size; ++i)
+			result[i] = op(*it++, vs[i]...);
+		return result;
+	}
+
+	// Helper function to apply an op to each element in this vector.
+	// Op takes elements from this as the first argument, then any other vectors.
+	template <VectorizerCompatible<value_type, Size>... Vs, typename Op>
+	constexpr auto& apply(this auto& self, Op&& op, Vs&&... vs) noexcept {
 		auto it = self.begin();
 		for (std::size_t i = 0; i < Size; ++i)
 			op(*it++, vs[i]...);
-		return self;
+		return self.derived();
 	}
-
-	template <VectorizerCompatible<value_type, Size> V, typename Op>
-	constexpr auto& binary_op(this auto& self, V&& v, Op&& op) noexcept {
-		auto sit = self.begin();
-		auto vit = v.begin();
+	// Helper function to apply an op to each element in this vector, mutating it.
+	// Op takes elements from this as the first argument, then any other arguments.
+	template <typename... Ts, typename Op>
+		requires(!VectorizerCompatible<first_element_t<Ts...>, value_type, Size>)
+	constexpr auto& apply(this auto& self, Op&& op, Ts&&... ts) noexcept {
+		auto it = self.begin();
 		for (std::size_t i = 0; i < Size; ++i)
-			op(*sit++, *vit++);
-		return self;
-	}
-
-	template <typename T, typename Op>
-	constexpr auto& binary_op(this auto& self, T&& t, Op&& op) noexcept {
-		for (auto& val : self)
-			op(val, t);
-		return self;
-	}
-
-	template <typename Op>
-	constexpr auto& unary_op(this auto& self, Op&& op) noexcept {
-		for (auto& val : self)
-			op(val);
-		return self;
-	}
-
-	// Create a new vector by applying an operation to this vector and V.
-	template <typename V, typename Op>
-	constexpr derived_type to_vec_result_op(this auto& self, const V& v, Op&& op) noexcept {
-		derived_type result;
-		if constexpr (VectorizerCompatible<V, value_type, Size>) {
-			auto it = result.begin();
-			self.binary_op(v, [&it, op = forward<Op>(op)](auto&& lhs, auto&& rhs) noexcept { (*it++) = op(lhs, rhs); });
-		} else {
-			for (std::size_t i = 0; i < Size; ++i)
-				result[i] = op(self[i], v);
-		}
-		return result;
+			op(*it++, ts...);
+		return self.derived();
 	}
 };
+
 } // ctp
 
 #endif // INCLUDE_CTP_TOOLS_VECTORIZER_HPP

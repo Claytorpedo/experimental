@@ -1,3 +1,5 @@
+#define CTP_ASSERTS_ENABLED 1
+
 #include <catch.hpp>
 #include <Tools/Vectorizer.hpp>
 
@@ -115,6 +117,7 @@ constexpr auto basic_vec4_tests() {
 		ctpAssert(!result);
 	}
 
+
 	// Mutating STL algorithm.
 	{
 		auto test = Vec{3, 5, 2, -1};
@@ -150,11 +153,13 @@ constexpr int conversion_tests() {
 	struct Veci : Vectorizer<Veci, int, 5> {
 		using Vectorizer::Vectorizer;
 		int a, b, c, d, e;
+		constexpr auto operator<=>(const Veci&) const noexcept = default;
 		CTP_MAKE_VECTORIZER_LIST(&Veci::a, &Veci::b, &Veci::c, &Veci::d, &Veci::e)
 	};
 	struct Vecu : Vectorizer<Vecu, unsigned, 5> {
 		using Vectorizer::Vectorizer;
 		unsigned x, y, z, p, q;
+		constexpr auto operator<=>(const Vecu&) const noexcept = default;
 		CTP_MAKE_VECTORIZER_LIST(&Vecu::x, &Vecu::y, &Vecu::z, &Vecu::p, &Vecu::q)
 	};
 
@@ -176,21 +181,17 @@ constexpr int operation_tests() {
 		int x, y, z;
 		using Vectorizer::Vectorizer;
 
-		constexpr Vec operator+(int i) const { return to_vec_result_op(i, std::plus{}); }
-		constexpr Vec operator+(Vec i) const { return to_vec_result_op(i, std::plus{}); }
-		constexpr Vec operator-(int i) const { return to_vec_result_op(i, std::minus{}); }
-		constexpr Vec operator-(Vec i) const { return to_vec_result_op(i, std::minus{}); }
+		constexpr auto operator<=>(const Vec&) const noexcept = default;
 
-		constexpr Vec operator+=(int i) { return binary_op(i, [](int& v, int o) { v += o; }); }
-		constexpr Vec operator*=(int i) { return binary_op(i, [](int& v, int o) { v *= o; }); }
-		constexpr Vec operator*=(Vec i) { return binary_op(i, [](int& v, int o) { v *= o; }); }
+		constexpr Vec operator+(int i) const { return reduce_to_vec(std::plus{}, i); }
+		constexpr Vec operator+(Vec v) const { return reduce_to_vec(std::plus{}, v); }
+		constexpr Vec operator-(int i) const { return reduce_to_vec(std::minus{}, i); }
+		constexpr Vec operator-(Vec v) const { return reduce_to_vec(std::minus{}, v); }
 
-		constexpr int n_ary_product(const Vec& o, const Vec& oo) const noexcept {
-			int sum = 0;
-			auto multiply_three = [&](int one, int two, int three) { sum += one * two * three; };
-			n_ary_op(multiply_three, o, oo);
-			return sum;
-		}
+		constexpr Vec& operator+=(int i) { return apply([](int& v, int o) { v += o; }, i); }
+		constexpr Vec& operator*=(int i) { return apply([](int& v, int o) { v *= o; }, i); }
+		constexpr Vec& operator*=(Vec v) { return apply([](int& v, int o) { v *= o; }, v); }
+
 		CTP_MAKE_VECTORIZER_LIST(&Vec::x, &Vec::y, &Vec::z)
 	};
 
@@ -261,16 +262,6 @@ constexpr int operation_tests() {
 			ctpAssert((test *= Vec{4, 3, -2}) == Vec{4, 6, -6});
 			ctpAssert(test == Vec{4, 6, -6});
 		}
-	}
-
-	// N-ary Op
-	{
-		auto test = Vec{0};
-		ctpAssert(test.n_ary_product(Vec{1}, Vec{2}) == 0);
-		test = Vec{1};
-		ctpAssert(test.n_ary_product(Vec{1}, Vec{2}) == 6);
-		test = Vec{2};
-		ctpAssert(test.n_ary_product(Vec{1}, Vec{2}) == 12);
 	}
 
 	return 0;

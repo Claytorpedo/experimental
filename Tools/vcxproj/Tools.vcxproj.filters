@@ -20,7 +20,11 @@
     <ClInclude Include="$(Interface)concepts.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)CrtpHelper.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)debug.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)exception.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)iterator.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)iter_move.hpp" />
+    <ClInclude Include="$(Interface)move_iterator.hpp" />
+    <ClInclude Include="$(Interface)reverse_iterator.hpp" />
     <ClInclude Include="$(Interface)scope.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)StrongType.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)type_traits.hpp" Filter="Inc" />

@@ -40,6 +40,9 @@ concept n_aryOp = requires (Op && op, Ts&&... ts) {
 	op(forward<Ts>(ts)...);
 };
 
+template <class Derived, template <class...> class Base>
+concept HasBaseTemplate = has_base_template_v<Derived, Base>;
+
 } // ctp::concepts
 
 #endif // INCLUDE_CTP_TOOLS_CONCEPTS_HPP
