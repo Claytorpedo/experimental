@@ -19,6 +19,15 @@ Based on `boost/iterator_facade`, but `constexpr`/`noexcept` friendly. Makes som
 ### scope.hpp
 Implementation of `<scope>` from `std::experimental`. Similar to `gsl::finally`.
 
+### small_string.hpp
+Constexpr friendly string type with customizable small storage optimization.
+
+### small_vector.hpp
+Constexpr friendly vector type with customizable small storage optimization.
+
+### scope.hpp
+Implementation of `<scope>` from `std::experimental`. Similar to `gsl::finally`.
+
 ### StrongType.hpp
 Very experimental strong type class. Designed to allow opting in to different behaviours.
 
