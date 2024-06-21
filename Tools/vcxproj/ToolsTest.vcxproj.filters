@@ -9,16 +9,25 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="$(Test)small_storage_test_helpers.hpp" Filter="Src"/>
+  </ItemGroup>
+  <ItemGroup>
     <ClCompile Include="$(Test)catch_main.cpp" Filter="Src" />
     <ClCompile Include="$(Test)ranges/erase_test.cpp" Filter="Src\ranges" />
     <ClCompile Include="$(Test)ranges/remove_test.cpp" Filter="Src\ranges" />
     <ClCompile Include="$(Test)BitEnumTest.cpp" Filter="Src" />
+    <ClCompile Include="$(Test)charconvtest.cpp" Filter="Src" />
     <ClCompile Include="$(Test)iterator_test.cpp" Filter="Src" />
     <ClCompile Include="$(Test)reverse_iterator_test.cpp" Filter="Src" />
+    <ClCompile Include="$(Test)small_storage_test.construction.cpp" Filter="Src" />
+    <ClCompile Include="$(Test)small_storage_test.general.cpp" Filter="Src" />
+    <ClCompile Include="$(Test)small_string_test.cpp" Filter="Src" />
+    <ClCompile Include="$(Test)small_vector_test.cpp" Filter="Src" />
     <ClCompile Include="$(Test)ScopeTest.cpp" Filter="Src" />
     <ClCompile Include="$(Test)StrongTypeTest.cpp" Filter="Src" />
     <ClCompile Include="$(Test)type_traits_test.cpp" Filter="Src" />
+    <ClCompile Include="$(Test)uninitialized_storage_iterator_test.cpp" Filter="Src" />
+    <ClCompile Include="$(Test)uninitialized_storage_test.cpp" Filter="Src" />
     <ClCompile Include="$(Test)VectorizerTest.cpp" Filter="Src" />
-    <ClCompile Include="$(Test)charconvtest.cpp" Filter="Src" />
   </ItemGroup>
 </Project>

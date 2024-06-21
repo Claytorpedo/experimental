@@ -10,10 +10,14 @@
     <Filter Include="Inc\ranges">
       <UniqueIdentifier>{16982211-5e1c-4793-9773-74a08ccafe83}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Inc\test">
+      <UniqueIdentifier>{E13A63A9-3F38-4C8C-BD07-FFD68C2B0CCB}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(Interface)ranges/erase.hpp" Filter="Inc\ranges" />
     <ClInclude Include="$(Interface)ranges/remove.hpp" Filter="Inc\ranges" />
+    <ClInclude Include="$(Interface)test/catch_test_helpers.hpp" Filter="Inc/test"/>
     <ClInclude Include="$(Interface)BitEnum.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)charconv.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)config.hpp" Filter="Inc" />
@@ -26,10 +30,18 @@
     <ClInclude Include="$(Interface)move_iterator.hpp" />
     <ClInclude Include="$(Interface)reverse_iterator.hpp" />
     <ClInclude Include="$(Interface)scope.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)small_storage.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)small_string.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)small_vector.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)static_warn.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)StrongType.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)trivial_allocator_adapter.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)type_traits.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)uninitialized_storage.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)uninitialized_storage_iterator.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)utility.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)Vectorizer.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)warnings.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)windows.hpp" Filter="Inc" />
   </ItemGroup>
   <ItemGroup>

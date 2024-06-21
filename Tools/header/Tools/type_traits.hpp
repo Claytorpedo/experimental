@@ -53,17 +53,57 @@ using is_detected_convertible = std::is_convertible<detected_t<Op, Args...>, To>
 template <class To, template<class...> class Op, class... Args>
 inline constexpr bool is_detected_convertible_v = is_detected_convertible<To, Op, Args...>::value;
 
+// ---------------------------------------------------------
+// typelist
+// ---------------------------------------------------------
+
+// Typelist helper to contain types. Use other typelist_ helpers to access.
+template <typename... Ts> struct typelist {};
+
+template <typename Typelist> struct typelist_size { /*This is not a typelist.*/ };
+template <typename... Ts> struct typelist_size<typelist<Ts...>> { static constexpr std::size_t value = sizeof...(Ts); };
+
+// Get a type from a typelist at a given index.
+template<std::size_t Index, typename Typelist>
+struct typelist_type_at_index;
+
+template<typename Head, typename... Rest>
+struct typelist_type_at_index<0, typelist<Head, Rest...> > { using type = Head; };
+
+template<std::size_t Index, typename Head, typename... Rest>
+struct typelist_type_at_index<Index, typelist<Head, Rest...> > {
+	using type = typename typelist_type_at_index<Index - 1, typelist<Rest...>>::type;
+};
+
+// Get the first element from a typelist.
+template <typename Typelist> struct typelist_head : typelist_type_at_index<0, Typelist> {};
+
+// ---------------------------------------------------------
+// instantiation of
+// ---------------------------------------------------------
 
 // is_instantiation_of: detect if MaybeInstantiationType is any instantiation of TemplateType. e.g. T<int> is an instantiation of T<U>
 template <template <class...> class TemplateType, class MaybeInstantiationType>
-struct is_instantiation_of : std::false_type {};
-
+struct is_instantiation_of {
+	static constexpr bool value = false;
+};
 template <template<class...> class TemplateType, class... Args>
-struct is_instantiation_of<TemplateType, TemplateType<Args...>> : std::true_type {};
-
+struct is_instantiation_of<TemplateType, TemplateType<Args...>> {
+	static constexpr bool value = true;
+	using types = typelist<Args...>;
+};
 template <template<class...> class TemplateType, class MaybeInstantiationType>
 inline constexpr bool is_instantiation_of_v = is_instantiation_of<TemplateType, std::remove_cv_t<MaybeInstantiationType>>::value;
 
+// Get a typelist of types for the TemplateType.
+template <template<class...> class TemplateType, class MaybeInstantiationType>
+using is_instantiation_of_ts = typename is_instantiation_of<TemplateType, std::remove_cv_t<MaybeInstantiationType>>::types;
+
+// Get the first type for the TemplateType.
+template <template<class...> class TemplateType, class MaybeInstantiationType>
+using is_instantiation_of_t = typename typelist_head<is_instantiation_of_ts<TemplateType, MaybeInstantiationType>>::type;
+
+// ---------------------------------------------------------
 
 // is_explicitly_convertible: detect if static_cast<To>(From) is valid.
 namespace detail { template <typename F, typename T> using explicit_conversion = decltype(static_cast<T>(std::declval<F>())); }
@@ -144,7 +184,7 @@ template <typename T> struct has_inner_const<T*> { static constexpr bool value =
 template <typename T> struct has_inner_const<T* const> { static constexpr bool value = std::is_const_v<T>; };
 template <typename T> inline constexpr bool has_inner_const_v = has_inner_const<T>::value;
 
-// one_of_binary_op; Heper to apply a binary operation to a list of template types and get their disjunction.
+// one_of_binary_op; Helper to apply a binary operation to a list of template types and get their disjunction.
 template <template <class...> class BinaryOp, typename Test, typename... Ts>
 struct one_of_binary_op : std::disjunction<BinaryOp<Test, Ts>...> {};
 
@@ -154,6 +194,10 @@ struct one_of : one_of_binary_op<std::is_same, Test, Ts...> {};
 template <typename Test, typename... Ts>
 inline constexpr bool one_of_v = one_of<Test, Ts...>::value;
 
+template <typename T> struct compare_three_way_type {
+	using type = decltype(std::declval<const T&>() <=> std::declval<const T&>());
+};
+template <typename T> using compare_three_way_type_t = typename compare_three_way_type<T>::type;
 
 } // ctp
 

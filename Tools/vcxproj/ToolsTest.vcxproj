@@ -8,17 +8,26 @@
   </PropertyGroup>
   <Import Project="..\..\ctp.props" />
   <ItemGroup>
+    <ClInclude Include="$(Test)small_storage_test_helpers.hpp" />
+  </ItemGroup>
+  <ItemGroup>
     <ClCompile Include="$(Test)catch_main.cpp" />
     <ClCompile Include="$(Test)ranges/erase_test.cpp" />
     <ClCompile Include="$(Test)ranges/remove_test.cpp" />
     <ClCompile Include="$(Test)BitEnumTest.cpp" />
+    <ClCompile Include="$(Test)charconvtest.cpp" />
     <ClCompile Include="$(Test)iterator_test.cpp" />
     <ClCompile Include="$(Test)reverse_iterator_test.cpp" />
+    <ClCompile Include="$(Test)small_storage_test.construction.cpp" />
+    <ClCompile Include="$(Test)small_storage_test.general.cpp" />
+    <ClCompile Include="$(Test)small_string_test.cpp" />
+    <ClCompile Include="$(Test)small_vector_test.cpp" />
     <ClCompile Include="$(Test)ScopeTest.cpp" />
     <ClCompile Include="$(Test)StrongTypeTest.cpp" />
     <ClCompile Include="$(Test)type_traits_test.cpp" />
+    <ClCompile Include="$(Test)uninitialized_storage_iterator_test.cpp" />
+    <ClCompile Include="$(Test)uninitialized_storage_test.cpp" />
     <ClCompile Include="$(Test)VectorizerTest.cpp" />
-    <ClCompile Include="$(Test)charconvtest.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

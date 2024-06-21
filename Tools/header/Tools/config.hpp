@@ -35,35 +35,35 @@
 /* -------------------- compiler -------------------- */
 #ifdef __clang__
 
-#if __has_builtin(__builtin_assume)
-#define CTP_ASSUME(expr) __builtin_assume(!!(expr))
-#endif
+ #if __has_builtin(__builtin_assume)
+ #define CTP_ASSUME(expr) __builtin_assume(!!(expr))
+ #endif
 
-#if __has_builtin(__builtin_constant_p)
-#define CTP_IS_CONSTEXPR(expr) __builtin_constant_p(expr)
-#endif
+ #if __has_builtin(__builtin_constant_p)
+ #define CTP_IS_CONSTEXPR(expr) __builtin_constant_p(expr)
+ #endif
 
 #elif defined __GNUC__
 
-#define CTP_ASSUME(expr) ((expr) ? static_cast<void>(0) : __builtin_unreachable())
-#if __has_builtin(__builtin_constant_p)
-#define CTP_IS_CONSTEXPR(expr) __builtin_constant_p(expr)
-#endif
+ #define CTP_ASSUME(expr) ((expr) ? static_cast<void>(0) : __builtin_unreachable())
+ #if __has_builtin(__builtin_constant_p)
+ #define CTP_IS_CONSTEXPR(expr) __builtin_constant_p(expr)
+ #endif
 
 #elif defined __EMSCRIPTEN__
 
-#define CTP_ASSUME(expr)
-#define CTP_BREAK_INTO_DEBUGGER __builtin_trap()
+ #define CTP_ASSUME(expr)
+ #define CTP_BREAK_INTO_DEBUGGER __builtin_trap()
 
 #elif defined _MSC_VER
 
-#define CTP_ASSUME(expr) __assume(!!(expr))
-#define CTP_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
+ #define CTP_ASSUME(expr) __assume(!!(expr))
+ #define CTP_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
 
-#define CTP_BREAK_INTO_DEBUGGER __debugbreak()
+ #define CTP_BREAK_INTO_DEBUGGER __debugbreak()
 
 #else
-#error "Unknown compiler."
+ #error "Unknown compiler."
 #endif
 
 /* -------------------- defaults -------------------- */
@@ -89,12 +89,12 @@
 #endif
 
 #ifndef CTP_BREAK_INTO_DEBUGGER
-#include <signal.h>
-#ifdef SIGTRAP
-#define CTP_BREAK_INTO_DEBUGGER raise(SIGTRAP)
-#else
-#define CTP_BREAK_INTO_DEBUGGER raise(SIGABRT)
-#endif
+ #include <signal.h>
+ #ifdef SIGTRAP
+  #define CTP_BREAK_INTO_DEBUGGER raise(SIGTRAP)
+ #else
+  #define CTP_BREAK_INTO_DEBUGGER raise(SIGABRT)
+ #endif
 #endif
 
 /* --------------------- general --------------------- */

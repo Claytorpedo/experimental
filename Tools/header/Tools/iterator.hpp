@@ -1,8 +1,11 @@
-#ifndef CTP_TOOLS_ITERATOR_HPP
-#define CTP_TOOLS_ITERATOR_HPP
+#ifndef INCLUDE_CTP_TOOLS_ITERATOR_HPP
+#define INCLUDE_CTP_TOOLS_ITERATOR_HPP
 
+#include "config.hpp"
 #include "CrtpHelper.hpp"
 #include "type_traits.hpp"
+
+#include <memory> // addressof
 
 // Avoid including <iterator>, as we only need these tags and it's huge.
 namespace std {
@@ -55,15 +58,19 @@ class iterator_accessor;
 //                                                            | (e.g. std::size_t&), or a proxy that defines the
 //                                                            | operations outlined by IndexLike, found below.
 // -----------------------------------------------------------|----------------------------------
+//                                                            | Advance this iterator forward or backward by the given
+// *unused*         advance(difference_type)                  | amount.
+//                                                            | For random access iterators that can't use get_index.
+// -----------------------------------------------------------|----------------------------------
 // difference_type  distance_to(const Derived& other) const   | Distance to another iterator as if "other - this".
 // -----------------------------------------------------------|----------------------------------
 // *bool-like*      equals(const Derived& other) const        | Equality comparison with another iterator.
 // -----------------------------------------------------------|----------------------------------
 // Derived&         pre_increment()                           | Pre-increment the iterator.
-// Derived&         pre_increment()                           | For input/forward/bidirectional iterators.
+//                                                            | For input/forward/bidirectional iterators.
 // -----------------------------------------------------------|----------------------------------
 // Derived&         pre_decrement()                           | Pre-decrement the iterator.
-// Derived&         pre_decrement()                           | Primarily for bidirectional iterators.
+//                                                            | Primarily for bidirectional iterators.
 // -----------------------------------------------------------|----------------------------------
 
 // -------------------------------------------------------------------------------------------
@@ -96,9 +103,9 @@ class iterator_accessor;
 //     using const_iterator = my_derived_t<const my_value>;
 // where ValueType is used to make the const and non-const versions of the iterator.
 #define CTP_NONCONST_ITERATOR_INTEROP_CONSTRUCTOR_HEAD( \
-	DerivedTemplateType, ValueType, NonConstValueType, ClassOrStruct, MaybeConstexpr, NoThrowSpec ) \
+	DerivedTemplateType, ValueType, NonConstValueType, ConstValueType, ClassOrStruct, MaybeConstexpr, NoThrowSpec ) \
 	private: \
-		friend ClassOrStruct DerivedTemplateType<NonConstValueType>; \
+		friend ClassOrStruct DerivedTemplateType<ConstValueType>; \
 		using nonconst_t = ::std::conditional_t< \
 			::std::is_same_v<ValueType, NonConstValueType>, \
 				::ctp::nonesuch, \
@@ -111,7 +118,13 @@ class iterator_accessor;
 // value type can be obtained by removing any inner const from a value, reference, or pointer.
 #define CTP_NONCONST_ITERATOR_INTEROP_CONSTRUCTOR_HEAD_DEFAULT(DerivedTemplateType, ValueType) \
 	CTP_NONCONST_ITERATOR_INTEROP_CONSTRUCTOR_HEAD( \
-		DerivedTemplateType, ValueType, ::ctp::remove_inner_const_t<ValueType>, class, constexpr, noexcept )
+		DerivedTemplateType, \
+		ValueType, \
+		::std::remove_const_t<ValueType>, \
+		::std::add_const_t<ValueType>, \
+		class, \
+		constexpr, \
+		noexcept )
 
 namespace iterator_detail {
 
@@ -170,7 +183,6 @@ concept IndexLike = requires (I i, DiffT n) {
 	++i;
 	--i;
 	i += n;
-	i = n;
 	{ i - i } -> std::convertible_to<DiffT>;
 	i == i;
 };
@@ -198,10 +210,10 @@ struct tag_to_base_type {
 	static constexpr BaseType value = ctp::one_of_v<IteratorTag, std::input_iterator_tag, std::forward_iterator_tag> ?
 		BaseType::InputOrForward :
 		std::is_same_v<IteratorTag, std::bidirectional_iterator_tag> ?
-			BaseType::Bidirectional :
-			ctp::one_of_v<IteratorTag, std::random_access_iterator_tag, std::contiguous_iterator_tag> ?
-				BaseType::Random :
-				BaseType::NoneSuch;
+		BaseType::Bidirectional :
+		ctp::one_of_v<IteratorTag, std::random_access_iterator_tag, std::contiguous_iterator_tag> ?
+		BaseType::Random :
+		BaseType::NoneSuch;
 	static_assert(value != BaseType::NoneSuch);
 };
 template <typename IteratorTag>
@@ -255,7 +267,7 @@ class iterator_accessor {
 	template <typename I> using HasDistanceTo = decltype(std::declval<I>().distance_to(std::declval<I>()));
 
 	template <typename I> static constexpr bool IsDirectIndexible =
-	         iterator_detail::IndexLike<detected_t<DirectIndexible, I>, typename I::difference_type>;
+		iterator_detail::IndexLike<detected_t<DirectIndexible, I>, typename I::difference_type>;
 	template <typename I> static constexpr bool IsPeekable = is_detected_v<HasPeek, I>;
 	template <typename I> static constexpr bool IsPreIncrable = is_detected_v<HasPreIncr, I>;
 	template <typename I> static constexpr bool IsPreDecrable = is_detected_v<HasPreDecr, I>;
@@ -298,12 +310,12 @@ class iterator_accessor {
 		i.pre_increment();
 	}
 	template <typename I>
-		requires (!IsPreIncrable<I> && IsDirectIndexible<I>)
+		requires (!IsPreIncrable<I>&& IsDirectIndexible<I>)
 	static constexpr void pre_increment(I& i) CTP_NOEXCEPT(noexcept(++i.get_index())) {
 		++i.get_index();
 	}
 	template <typename I>
-		requires (!IsPreIncrable<I> && !IsDirectIndexible<I> && IsAdvanceable<I>)
+		requires (!IsPreIncrable<I> && !IsDirectIndexible<I>&& IsAdvanceable<I>)
 	static constexpr void pre_increment(I& i) CTP_NOEXCEPT(noexcept(i.advance(typename I::difference_type{1}))) {
 		i.advance(typename I::difference_type{1});
 	}
@@ -315,12 +327,12 @@ class iterator_accessor {
 		i.pre_decrement();
 	}
 	template <typename I>
-		requires (!IsPreDecrable<I> && IsDirectIndexible<I>)
+		requires (!IsPreDecrable<I>&& IsDirectIndexible<I>)
 	static constexpr void pre_decrement(I& i) CTP_NOEXCEPT(noexcept(--i.get_index())) {
 		--i.get_index();
 	}
 	template <typename I>
-		requires (!IsPreDecrable<I>&& !IsDirectIndexible<I> && IsAdvanceable<I>)
+		requires (!IsPreDecrable<I> && !IsDirectIndexible<I>&& IsAdvanceable<I>)
 	static constexpr void pre_decrement(I& i) CTP_NOEXCEPT(noexcept(i.advance(typename I::difference_type{-1}))) {
 		i.advance(typename I::difference_type{-1});
 	}
@@ -336,7 +348,7 @@ class iterator_accessor {
 	using IndexType = std::remove_reference_t<detected_t<DirectIndexible, I>>;
 	template <typename I, typename DiffType>
 	struct advance_nothrow_class_test {
-		static constexpr bool value = CTP_NOEXCEPT(std::declval<IndexType<I>>() += std::declval<DiffType>());
+		static constexpr bool value = CTP_NOEXCEPT(std::declval<IndexType<I>&>() += std::declval<DiffType>());
 	};
 	template <typename I, typename DiffType>
 	static constexpr bool is_advance_nothrow = std::conditional_t<std::is_integral_v<IndexType<I>> && std::is_integral_v<DiffType>,
@@ -344,10 +356,10 @@ class iterator_accessor {
 		advance_nothrow_class_test<I, DiffType>>::value;
 
 	template <typename I, typename DiffType>
-		requires (!IsAdvanceable<I> && IsDirectIndexible<I>)
+		requires (!IsAdvanceable<I>&& IsDirectIndexible<I>)
 	static constexpr void advance(I& i, DiffType n) CTP_NOEXCEPT((is_advance_nothrow<I, DiffType>)) {
 		using IndexType = std::remove_reference_t<detected_t<DirectIndexible, I>>;
-		if constexpr (std::is_integral_v<IndexType> &&  sizeof(DiffType) > sizeof(IndexType)) {
+		if constexpr (std::is_integral_v<IndexType> && sizeof(DiffType) > sizeof(IndexType)) {
 			// DiffType is bigger, and must be signed. Convert to DiffType first to avoid potential loss of range.
 			DiffType temp = i.get_index();
 			temp += n;
@@ -381,7 +393,7 @@ class iterator_accessor {
 		return static_cast<typename I::difference_type>(lhs.distance_to(rhs));
 	}
 	template <typename I>
-		requires (!is_detected_v<HasDistanceTo, I> && IsDirectIndexible<I>)
+		requires (!is_detected_v<HasDistanceTo, I>&& IsDirectIndexible<I>)
 	static constexpr decltype(auto) distance(const I& lhs, const I& rhs)
 		CTP_NOEXCEPT(noexcept(const_get_index(rhs) - const_get_index(lhs)))
 	{
@@ -395,12 +407,12 @@ class iterator_accessor {
 		return lhs.equals(rhs);
 	}
 	template <typename I>
-		requires (!is_detected_v<HasEquals, I> && is_detected_v<HasDistanceTo, I>)
+		requires (!is_detected_v<HasEquals, I>&& is_detected_v<HasDistanceTo, I>)
 	static constexpr bool equals(const I& lhs, const I& rhs) noexcept(noexcept(lhs.distance_to(rhs) == 0)) {
 		return lhs.distance_to(rhs) == 0;
 	}
 	template <typename I>
-		requires (!is_detected_v<HasEquals, I> && !is_detected_v<HasDistanceTo, I> && IsDirectIndexible<I>)
+		requires (!is_detected_v<HasEquals, I> && !is_detected_v<HasDistanceTo, I>&& IsDirectIndexible<I>)
 	static constexpr bool equals(const I& lhs, const I& rhs)
 		CTP_NOEXCEPT(noexcept(const_get_index(lhs) == const_get_index(rhs) == 0))
 	{
@@ -418,7 +430,7 @@ class iterator_accessor {
 	template <typename D, typename V, typename I, typename Diff, typename R,
 		typename D2, typename V2, typename I2, typename Diff2, typename R2,
 		typename CommonDerived>
-			requires iterator_detail::iterators_interopable<D, D2>
+		requires iterator_detail::iterators_interopable<D, D2>
 	friend constexpr auto operator-(const iterator_t<D, V, I, Diff, R>& lhs, const iterator_t<D2, V2, I2, Diff2, R2>& rhs)
 		CTP_NOEXCEPT(noexcept(iterator_accessor::distance<CommonDerived>(static_cast<const D2&>(rhs), static_cast<const D&>(lhs))));
 
@@ -426,14 +438,14 @@ class iterator_accessor {
 	template <typename D, typename V, typename I, typename Diff, typename R,
 		typename D2, typename V2, typename I2, typename Diff2, typename R2,
 		typename CommonDerived>
-			requires iterator_detail::iterators_interopable<D, D2>
+		requires iterator_detail::iterators_interopable<D, D2>
 	friend constexpr auto operator<=>(const iterator_t<D, V, I, Diff, R>& lhs, const iterator_t<D2, V2, I2, Diff2, R2>& rhs)
 		CTP_NOEXCEPT(noexcept(iterator_accessor::distance<CommonDerived>(static_cast<const D&>(lhs), static_cast<const D2&>(rhs))));
 
 	template <typename D, typename V, typename I, typename Diff, typename R,
 		typename D2, typename V2, typename I2, typename Diff2, typename R2,
 		typename CommonDerived>
-			requires iterator_detail::iterators_interopable<D, D2>
+		requires iterator_detail::iterators_interopable<D, D2>
 	friend constexpr bool operator==(const iterator_t<D, V, I, Diff, R>& lhs, const iterator_t<D2, V2, I2, Diff2, R2>& rhs)
 		CTP_NOEXCEPT(noexcept(iterator_accessor::equals<CommonDerived>(static_cast<const D&>(lhs), static_cast<const D2&>(rhs))));
 }; // iterator_accessor
@@ -463,6 +475,13 @@ public:
 		return iterator_accessor::dereference(this->derived());
 	}
 	[[nodiscard]] constexpr pointer operator->() const
+		CTP_NOEXCEPT(noexcept(iterator_accessor::peek(this->derived())))
+	{
+		return op_arrow<peek_type>::do_op(iterator_accessor::peek(this->derived()));
+	}
+
+	// Returns pointer to underlying data, as if by operator->
+	[[nodiscard]] constexpr pointer get() const
 		CTP_NOEXCEPT(noexcept(iterator_accessor::peek(this->derived())))
 	{
 		return op_arrow<peek_type>::do_op(iterator_accessor::peek(this->derived()));
@@ -581,11 +600,11 @@ template <
 	typename ReferenceType = ValueType&>
 class iterator_t
 	: public iterator_detail::iterator_base<
-	                                        Derived,
-	                                        ValueType,
-	                                        DifferenceType,
-	                                        ReferenceType,
-	                                        iterator_detail::tag_to_base_type_v<IteratorConcept>> {
+	Derived,
+	ValueType,
+	DifferenceType,
+	ReferenceType,
+	iterator_detail::tag_to_base_type_v<IteratorConcept>> {
 	using base = iterator_detail::iterator_base<Derived, ValueType, DifferenceType, ReferenceType, iterator_detail::tag_to_base_type_v<IteratorConcept>>;
 public:
 	using derived_type = typename base::derived_type;
@@ -598,7 +617,7 @@ public:
 
 template <typename D, typename V, typename I, typename Diff, typename R>
 [[nodiscard]] constexpr auto operator+(typename D::difference_type offset, const iterator_t<D, V, I, Diff, R>& iter)
-	CTP_NOEXCEPT(noexcept(static_cast<const D&>(iter) + offset))
+CTP_NOEXCEPT(noexcept(static_cast<const D&>(iter) + offset))
 {
 	return static_cast<const D&>(iter) + offset;
 }
@@ -606,9 +625,9 @@ template <typename D, typename V, typename I, typename Diff, typename R>
 template <typename D, typename V, typename I, typename Diff, typename R,
 	typename D2, typename V2, typename I2, typename Diff2, typename R2,
 	typename CommonDerived = iterator_detail::iterators_interop_t<D, D2>>
-		requires iterator_detail::iterators_interopable<D, D2>
+	requires iterator_detail::iterators_interopable<D, D2>
 [[nodiscard]] constexpr auto operator-(const iterator_t<D, V, I, Diff, R>& lhs, const iterator_t<D2, V2, I2, Diff2, R2>& rhs)
-	CTP_NOEXCEPT(noexcept(iterator_accessor::distance<CommonDerived>(static_cast<const D2&>(rhs), static_cast<const D&>(lhs))))
+CTP_NOEXCEPT(noexcept(iterator_accessor::distance<CommonDerived>(static_cast<const D2&>(rhs), static_cast<const D&>(lhs))))
 {
 	return iterator_accessor::distance<CommonDerived>(static_cast<const D2&>(rhs), static_cast<const D&>(lhs));
 }
@@ -617,9 +636,9 @@ template <typename D, typename V, typename I, typename Diff, typename R,
 template <typename D, typename V, typename I, typename Diff, typename R,
 	typename D2, typename V2, typename I2, typename Diff2, typename R2,
 	typename CommonDerived = iterator_detail::iterators_interop_t<D, D2>>
-		requires iterator_detail::iterators_interopable<D, D2>
+	requires iterator_detail::iterators_interopable<D, D2>
 [[nodiscard]] constexpr auto operator<=>(const iterator_t<D, V, I, Diff, R>& lhs, const iterator_t<D2, V2, I2, Diff2, R2>& rhs)
-	CTP_NOEXCEPT(noexcept(iterator_accessor::distance<CommonDerived>(static_cast<const D&>(lhs), static_cast<const D2&>(rhs))))
+CTP_NOEXCEPT(noexcept(iterator_accessor::distance<CommonDerived>(static_cast<const D&>(lhs), static_cast<const D2&>(rhs))))
 {
 	return typename CommonDerived::difference_type{} <=>
 		iterator_accessor::distance<CommonDerived>(static_cast<const D&>(lhs), static_cast<const D2&>(rhs));
@@ -628,13 +647,13 @@ template <typename D, typename V, typename I, typename Diff, typename R,
 template <typename D, typename V, typename I, typename Diff, typename R,
 	typename D2, typename V2, typename I2, typename Diff2, typename R2,
 	typename CommonDerived = iterator_detail::iterators_interop_t<D, D2>>
-		requires iterator_detail::iterators_interopable<D, D2>
+	requires iterator_detail::iterators_interopable<D, D2>
 [[nodiscard]] constexpr bool operator==(const iterator_t<D, V, I, Diff, R>& lhs, const iterator_t<D2, V2, I2, Diff2, R2>& rhs)
-	CTP_NOEXCEPT(noexcept(iterator_accessor::equals<CommonDerived>(static_cast<const D&>(lhs), static_cast<const D2&>(rhs))))
+CTP_NOEXCEPT(noexcept(iterator_accessor::equals<CommonDerived>(static_cast<const D&>(lhs), static_cast<const D2&>(rhs))))
 {
 	return iterator_accessor::equals<CommonDerived>(static_cast<const D&>(lhs), static_cast<const D2&>(rhs));
 }
 
 } // ctp
 
-#endif // CTP_TOOLS_ITERATOR_HPP
+#endif // INCLUDE_CTP_TOOLS_ITERATOR_HPP
