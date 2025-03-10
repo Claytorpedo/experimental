@@ -1,7 +1,7 @@
 # experimental
 Experimental projects sliced out of my personal (private) game engine project. See `Tools/header/Tools`.
 
-This is generally using MSVC latest or clang trunk.
+This is generally using MSVC latest or clang trunk. Note that building the Benchmark project requires google benchmark to be built statically.
 
 --------
 ### ranges/remove.hpp ranges/erase.hpp

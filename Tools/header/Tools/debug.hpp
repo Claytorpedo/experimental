@@ -7,6 +7,7 @@
 // TODO: option to keep some logs in Release mode
 
 #if CTP_DEBUG
+#include <exception>
 #include <string_view>
 
 namespace ctp::debug {

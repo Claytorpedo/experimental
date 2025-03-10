@@ -278,8 +278,8 @@ struct allocator_traits<tracker_alloc<T>> { // traits for std::allocator_type
 	}
 
 	template <class U, class... Args>
-	static _CONSTEXPR20 void construct(allocator_type& alloc, U* const ptr, Args&&... args) {
-		alloc.construct(ptr, ::std::forward<Args>(args)...);
+	static constexpr void construct(allocator_type& alloc, U* const ptr, Args&&... args) {
+		alloc.construct(ptr, std::forward<Args>(args)...);
 	}
 
 	template <class U>

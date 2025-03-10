@@ -156,6 +156,13 @@ constexpr bool MoveConstructTests(const std::array<DataT, DataSize>& data) {
 	return true;
 }
 
+#ifdef _MSC_VER
+// Seems that it needs to be disabled outside this function for it to take effect.
+// The issue is with the initializer_list in a constexpr context.
+// https://developercommunity.visualstudio.com/t/MSVC-incorrectly-reports-warning-C4702:/10720847
+#pragma warning(push)
+#pragma warning(disable: 4702)
+#endif
 template <typename T, typename DataT>
 constexpr bool CopyAssignTests(const std::array<DataT, DataSize>& data) {
 	using namespace ctp::small_storage;
@@ -334,7 +341,14 @@ constexpr bool CopyAssignTests(const std::array<DataT, DataSize>& data) {
 		// Copy from an initializer list.
 		using container_type = container<T, 2, std::allocator<T>, can_grow_options>;
 		container_type container;
+
 		const auto ilist = std::initializer_list<T>{data[0], data[1], data[2]};
+// The issue is specifically with the above initializer_list.
+// The test is working fine via debugger inspection.
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
 		container = ilist;
 
 		ctpAssert(container.size() == 3);

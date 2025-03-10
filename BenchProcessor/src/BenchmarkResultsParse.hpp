@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <string_view>
+#include <string>
 
 // Parse CSV results of google benchmark.
 namespace bench_parse {

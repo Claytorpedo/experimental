@@ -6,6 +6,7 @@
 #include <array>
 #include <charconv>
 #include <concepts>
+#include <limits>
 #include <string_view>
 
 namespace ctp {
