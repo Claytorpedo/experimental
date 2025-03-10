@@ -120,7 +120,7 @@ class vectorizer_iterator : public iterator_t<vectorizer_iterator<Derived, Value
 
 	// conversion from non-const iterator to const iterator.
 	friend class vectorizer_iterator<Derived, std::add_const_t<ValueType>>;
-	using nonconst_t = ::std::conditional_t<
+	using nonconst_t = std::conditional_t<
 		std::is_same_v<ValueType, std::remove_const_t<ValueType>>,
 		nonesuch,
 		vectorizer_iterator<Derived, std::remove_const_t<ValueType>>>;
@@ -128,7 +128,7 @@ public:
 	constexpr vectorizer_iterator() noexcept = default;
 	constexpr vectorizer_iterator(Derived& d, std::size_t i = 0) noexcept : d_{&d}, i_{i} {}
 
-	template <typename NonConstT = nonconst_t, std::enable_if_t<!::std::is_same_v<NonConstT, ::ctp::nonesuch>, int> = 0>
+	template <typename NonConstT = nonconst_t, std::enable_if_t<!std::is_same_v<NonConstT, ctp::nonesuch>, int> = 0>
 	constexpr vectorizer_iterator(const nonconst_t& o) noexcept : d_{o.d_}, i_{o.i_} {}
 };
 

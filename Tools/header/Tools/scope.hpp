@@ -48,7 +48,7 @@ class [[nodiscard]] ScopeExit : Policy {
 	F invocable_;
 public:
 	template <typename C>
-	constexpr explicit ScopeExit(C&& c) noexcept(std::is_nothrow_constructible_v<F, C&&>) : invocable_{::std::forward<C>(c)} {}
+	constexpr explicit ScopeExit(C&& c) noexcept(std::is_nothrow_constructible_v<F, C&&>) : invocable_{std::forward<C>(c)} {}
 
 	constexpr ~ScopeExit() noexcept(std::is_nothrow_invocable_v<F>) {
 		if (this->shouldExecute())
@@ -57,7 +57,7 @@ public:
 
 	constexpr ScopeExit(ScopeExit&& other) noexcept(std::is_nothrow_move_constructible_v<F>)
 		: Policy(other)
-		, invocable_{::std::move(other.invocable_)}
+		, invocable_{std::move(other.invocable_)}
 	{}
 
 	ScopeExit() = delete;
