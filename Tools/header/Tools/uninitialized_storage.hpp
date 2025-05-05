@@ -29,39 +29,6 @@ union uninitialized_item {
 	constexpr ~uninitialized_item() noexcept {}
 };
 
-
-namespace detail {
-
-template <typename T>
-class uninitialized_storage_base {
-protected:
-	void destroy(uninitialized_item<T>* items, std::size_t numToDestroy) {
-		for (std::size_t i = 0; i < numToDestroy; ++i)
-			std::destroy_at(std::addressof(items[i].item_));
-	}
-};
-
-} // detail
-
-// Uninitialized stack memory array of type T that can be used in constexpr contexts, with the
-// restrictions that you cannot retrieve a raw T* to the underlying array at compile time.
-template <typename T, std::size_t NumItems>
-class uninitialized_storage : detail::uninitialized_storage_base<T> {
-	uninitialized_item<T> items_[NumItems];
-	std::size_t size_ = 0;
-public:
-	using size_type = std::size_t;
-	static constexpr size_type size = NumItems;
-
-	constexpr ~uninitialized_storage() noexcept requires (!std::is_trivially_destructible_v<T>) {
-		destroy(items_, size_);
-	}
-
-	// TODO: basically can make this class via small_storage,
-	// or can copy and simplify code here when small_storage is done.
-
-};
-
 } // ctp
 
 #endif // INCLUDE_CTP_TOOLS_UNINITIALIZEDL_STORAGE_HPP
