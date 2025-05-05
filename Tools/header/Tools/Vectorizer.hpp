@@ -151,7 +151,7 @@ template <typename ValueType, std::size_t Size, typename... Ts>
 concept MatchingConstructorValues = requires {
 	requires (Size != 1);
 	requires (sizeof...(Ts) == Size);
-//requires concepts::AllExactlySame<Ts...>;
+	requires concepts::AllExactlySame<Ts...>;
 	requires concepts::AllConvertibleTo<ValueType, Ts...>;
 };
 

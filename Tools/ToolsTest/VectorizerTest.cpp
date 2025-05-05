@@ -168,7 +168,7 @@ constexpr int conversion_tests() {
 	const auto test = static_cast<Vecu>(intVec);
 
 	ctpAssert(intVec == Veci{0, -1, 2, 3, 4});
-	ctpAssert(test == Vecu{0, (std::numeric_limits<unsigned>::max)(), 2, 3, 4});
+	ctpAssert(test == Vecu{0u, (std::numeric_limits<unsigned>::max)(), 2u, 3u, 4u});
 
 	const auto reversed = static_cast<Veci>(test);
 	ctpAssert(reversed == intVec);
