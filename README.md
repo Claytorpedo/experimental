@@ -7,11 +7,17 @@ This is generally using MSVC latest or clang trunk. Note that building the Bench
 ### ranges/remove.hpp ranges/erase.hpp
 Provides unstable `remove`, `remove_if`, and `erase`, `erase_if` operations.
 
+### array.hpp
+Allocator-aware array, mostly used internally.
+
 ### BitEnum.hpp
 A strong type for enum classes with bitfield operations, similar to adding global overloads that check for a magic enum value or type trait class.
 
 ### charconv.hpp
 A wrapper for `std::to_chars` so it's less boilerplate if you're doing a lot of them.
+
+### enum_map.hpp
+A contiguous array indexed by enum values. Enforces a value to exist in the array.
 
 ### iterator.hpp
 Based on `boost/iterator_facade`, but `constexpr`/`noexcept` friendly. Makes some safety features that may have overhead cost opt-in where it is not possible to detect for certain they are needed.
@@ -36,3 +42,6 @@ A small collection of helpful type traits, includeing the `is_detected` pattern 
 
 ### Vectorizer.hpp
 Makes it easy to iterate on a vector-like class (e.g. `struct Colour { int r, g, b; };`). Similar in use to the anonymous-struct-in-anonymous-namespace approach, but avoids UB in constant expressions so they can be used in them.
+
+### zstring_view.hpp
+null-terminated string_view
