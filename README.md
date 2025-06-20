@@ -41,7 +41,7 @@ Very experimental strong type class. Designed to allow opting in to different be
 A small collection of helpful type traits, includeing the `is_detected` pattern from `std/experimental`.
 
 ### Vectorizer.hpp
-Makes it easy to iterate on a vector-like class (e.g. `struct Colour { int r, g, b; };`). Similar in use to the anonymous-struct-in-anonymous-namespace approach, but avoids UB in constant expressions so they can be used in them.
+Makes it easy to iterate on a vector-like class (e.g. `struct Colour { int r, g, b; };`). Similar in use to the anonymous-struct-in-anonymous-union approach, but avoids UB in constant expressions so they can be used in them.
 
 ### zstring_view.hpp
 null-terminated string_view
