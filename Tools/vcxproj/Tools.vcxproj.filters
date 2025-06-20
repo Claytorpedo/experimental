@@ -18,12 +18,15 @@
     <ClInclude Include="$(Interface)ranges/erase.hpp" Filter="Inc\ranges" />
     <ClInclude Include="$(Interface)ranges/remove.hpp" Filter="Inc\ranges" />
     <ClInclude Include="$(Interface)test/catch_test_helpers.hpp" Filter="Inc/test"/>
+    <ClInclude Include="$(Interface)array.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)BitEnum.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)charconv.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)config.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)concepts.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)CrtpHelper.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)debug.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)enum_map.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)enum_reflection.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)exception.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)iterator.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)iter_move.hpp" />
@@ -38,11 +41,11 @@
     <ClInclude Include="$(Interface)trivial_allocator_adapter.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)type_traits.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)uninitialized_storage.hpp" Filter="Inc" />
-    <ClInclude Include="$(Interface)uninitialized_storage_iterator.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)utility.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)Vectorizer.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)warnings.hpp" Filter="Inc" />
     <ClInclude Include="$(Interface)windows.hpp" Filter="Inc" />
+    <ClInclude Include="$(Interface)zstring_view.hpp" Filter="Inc" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(Source)debug.cpp" Filter="Src" />

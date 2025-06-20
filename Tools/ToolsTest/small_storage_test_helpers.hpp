@@ -12,7 +12,7 @@ struct small_only_options : ctp::small_storage::default_options {
 	using growth_policy = typename ctp::small_storage::medium_growth_policy;
 	using large_size_type = std::size_t;
 	static constexpr bool has_large_mode = false;
-	static constexpr bool constexpr_friendly = true;
+	static constexpr bool force_constexpr_friendliness = true;
 	static constexpr bool allow_default_construction_in_constant_expressions = true;
 };
 
@@ -20,7 +20,7 @@ struct small_only_non_constexpr_options : ctp::small_storage::default_options {
 	using growth_policy = typename ctp::small_storage::medium_growth_policy;
 	using large_size_type = std::size_t;
 	static constexpr bool has_large_mode = false;
-	static constexpr bool constexpr_friendly = false;
+	static constexpr bool force_constexpr_friendliness = false;
 	static constexpr bool allow_default_construction_in_constant_expressions = true;
 };
 
@@ -28,7 +28,7 @@ struct can_grow_options : ctp::small_storage::default_options {
 	using growth_policy = typename ctp::small_storage::medium_growth_policy;
 	using large_size_type = std::size_t;
 	static constexpr bool has_large_mode = true;
-	static constexpr bool constexpr_friendly = true;
+	static constexpr bool force_constexpr_friendliness = true;
 	static constexpr bool allow_default_construction_in_constant_expressions = true;
 };
 
@@ -36,7 +36,7 @@ struct can_grow_non_constexpr_options : ctp::small_storage::default_options {
 	using growth_policy = typename ctp::small_storage::medium_growth_policy;
 	using large_size_type = std::size_t;
 	static constexpr bool has_large_mode = true;
-	static constexpr bool constexpr_friendly = false;
+	static constexpr bool force_constexpr_friendliness = false;
 	static constexpr bool allow_default_construction_in_constant_expressions = true;
 };
 

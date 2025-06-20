@@ -10,7 +10,6 @@
 #include "scope.hpp"
 #include "type_traits.hpp"
 #include "uninitialized_storage.hpp"
-#include "uninitialized_storage_iterator.hpp"
 
 #include <bit>
 #include <cstddef>
@@ -57,9 +56,11 @@ struct default_options {
 	using growth_policy = medium_growth_policy;
 	using large_size_type = std::size_t;
 	static constexpr bool has_large_mode = true;
-	static constexpr bool constexpr_friendly = false;
+	// Attempt to force constexpr friendliness. This may impact runtime performance (e.g.
+	// has to use combo_uninitialized_iterator).
+	static constexpr bool force_constexpr_friendliness = false;
 
-	// Until a paper such as http://wg21.link/p3074 is adopted to enable
+	// Until a paper such as http://wg21.link/p3074 is implemented to make
 	// uninitialized array storage on the stack in constant expressions
 	// possible, we must either default-construct all items in the array or use uninitialized_item<T>.
 	// Default-construction allows a simpler iterator to be used and for data() to return a pointer at compile time.
@@ -69,10 +70,13 @@ struct default_options {
 template <class Options>
 concept SmallStorageOptions = std::derived_from<Options, default_options>;
 
+template <class T>
+concept can_trivially_construct_and_assign_v = std::is_trivially_default_constructible_v<T> && std::is_trivially_copy_assignable_v<T>;
+
 template <typename T, bool AllowDefaultConstructionInConstantExpressions>
 concept IsDataConstexprFriendly =
-	std::is_trivial_v<T> ||
-	(AllowDefaultConstructionInConstantExpressions && std::is_default_constructible_v<T>);
+can_trivially_construct_and_assign_v<T> ||
+(AllowDefaultConstructionInConstantExpressions && std::is_default_constructible_v<T>);
 
 
 template <typename T, std::size_t MinSmallCapacity, typename Allocator = std::allocator<T>, SmallStorageOptions options = default_options>
@@ -81,8 +85,6 @@ class container;
 // ---------------------------------------------------------------------------------------
 // small_storage::iterators
 // ---------------------------------------------------------------------------------------
-
-namespace detail { class const_iterator_converter; }
 
 // Wrap a pointer in a class for a strongly-typed iterator.
 template <typename T>
@@ -95,17 +97,6 @@ class ptr_iterator_t : public iterator_t<ptr_iterator_t<T>, T> {
 		: t_{other.t_}
 	{}
 	constexpr auto peek() noexcept { return t_; }
-
-	friend detail::const_iterator_converter;
-	// A few of the STL interface functions take const_iterators even when the intention
-	// is to modify the container with them. Provide a method to allow convertion to a non-const iterator.
-	constexpr auto to_non_const() noexcept {
-		if constexpr (std::same_as<nonconst_t, nonesuch>) {
-			return *this;
-		} else {
-			return nonconst_t{const_cast<std::remove_const_t<T>*>(t_)};
-		}
-	}
 public:
 	constexpr ptr_iterator_t() noexcept = default;
 	constexpr ptr_iterator_t(T* t) noexcept : t_{t} {}
@@ -114,12 +105,15 @@ public:
 // Special iterator when small_data uses uninitialized_item.
 template <typename T>
 class combo_uninitialized_iterator_t : public iterator_t<combo_uninitialized_iterator_t<T>, T> {
-	using small_type = std::conditional_t<std::is_const_v<T>, const uninitialized_item<std::remove_const_t<T>>, uninitialized_item<T>>;
+	using small_type = std::conditional_t<
+		std::is_const_v<T>,
+		const uninitialized_item<std::remove_const_t<T>>,
+		uninitialized_item<T>>;
 
 #ifdef __cpp_lib_within_lifetime
 	#warning "Should be able to get rid of is_small_ now."
 #endif
-	[[maybe_unused]] bool is_small_; // Intentionally uninitialized at runtime.
+		[[maybe_unused]] bool is_small_; // Intentionally uninitialized at runtime.
 	union {
 		small_type* small;
 		T* large;
@@ -129,7 +123,7 @@ class combo_uninitialized_iterator_t : public iterator_t<combo_uninitialized_ite
 
 	friend iterator_accessor;
 	constexpr void advance(std::ptrdiff_t n) noexcept {
-		if CTP_IS_CONSTEVAL{
+		if CTP_IS_CONSTEVAL {
 			if (is_small_)
 				small += n;
 			else
@@ -139,7 +133,7 @@ class combo_uninitialized_iterator_t : public iterator_t<combo_uninitialized_ite
 		}
 	}
 	constexpr auto distance_to(const combo_uninitialized_iterator_t& o) const noexcept {
-		if CTP_IS_CONSTEVAL{
+		if CTP_IS_CONSTEVAL {
 			// If this fails, we're comparing iterators from different storage, or one is expired.
 			ctpExpects(is_small_ == o.is_small_);
 			if (is_small_)
@@ -150,7 +144,7 @@ class combo_uninitialized_iterator_t : public iterator_t<combo_uninitialized_ite
 		}
 	}
 	constexpr T* peek() noexcept {
-		if CTP_IS_CONSTEVAL{
+		if CTP_IS_CONSTEVAL {
 			if (is_small_)
 				return std::addressof(small->item);
 			return large;
@@ -170,28 +164,6 @@ class combo_uninitialized_iterator_t : public iterator_t<combo_uninitialized_ite
 			small = other.small;
 		}
 	}
-
-	friend detail::const_iterator_converter;
-	// A few of the STL interface functions take const_iterators even when the intention
-	// is to modify the container with them. Provide a method to allow convertion to a non-const iterator.
-	constexpr auto to_non_const() noexcept {
-		if constexpr (std::same_as<nonconst_t, nonesuch>) {
-			return *this;
-		} else {
-			nonconst_t nonconst;
-			if CTP_IS_CONSTEVAL{
-				nonconst.is_small_ = is_small_;
-				if (is_small_) {
-					nonconst.small = const_cast<std::remove_const_t<small_type>*>(small);
-				} else {
-					nonconst.large = const_cast<std::remove_const_t<T>*>(large);;
-				}
-			} else {
-				nonconst.large = const_cast<std::remove_const_t<T>*>(large);
-			}
-			return nonconst;
-		}
-	}
 public:
 	constexpr combo_uninitialized_iterator_t() noexcept = default;
 	constexpr combo_uninitialized_iterator_t(uninitialized_item_iterator<std::remove_const_t<T>> it) noexcept
@@ -203,7 +175,7 @@ public:
 	}
 	constexpr combo_uninitialized_iterator_t(const_uninitialized_item_iterator<std::remove_const_t<T>> it) noexcept
 		requires std::is_const_v<T>
-		: small{it.get_item()}
+	: small{it.get_item()}
 	{
 		if CTP_IS_CONSTEVAL {
 			is_small_ = true;
@@ -219,7 +191,7 @@ public:
 	}
 	constexpr combo_uninitialized_iterator_t(ptr_iterator_t<std::remove_const_t<T>> it) noexcept
 		requires std::is_const_v<T>
-		: large{it.get()}
+	: large{it.get()}
 	{
 		if CTP_IS_CONSTEVAL {
 			is_small_ = false;
@@ -236,20 +208,20 @@ struct iterator_selector {
 	static constexpr bool CanDefaultConstruct =
 		CanDefaultConstructInConstantExpressions && std::is_default_constructible_v<T>;
 	using type = std::conditional_t<
-		std::is_trivial_v<T> || !ConstexprFriendly || CanDefaultConstruct,
+		can_trivially_construct_and_assign_v<T> || !ConstexprFriendly || CanDefaultConstruct,
 		ptr_iterator_t<T>,
 		std::conditional_t<
-			HasLargeMode,
-			combo_uninitialized_iterator_t<T>,
-			std::conditional_t<std::is_const_v<T>,
-				const_uninitialized_item_iterator<std::remove_const_t<T>>,
-				uninitialized_item_iterator<T>>>>;
+		HasLargeMode,
+		combo_uninitialized_iterator_t<T>,
+		std::conditional_t<std::is_const_v<T>,
+		const_uninitialized_item_iterator<std::remove_const_t<T>>,
+		uninitialized_item_iterator<T>>>>;
 };
 template <class T, bool HasLargeMode, bool ConstexprFriendly, bool CanDefaultConstructInConstantExpressions>
 using iterator_selector_t = typename iterator_selector<T,
-                                                       HasLargeMode,
-                                                       ConstexprFriendly,
-                                                       CanDefaultConstructInConstantExpressions>::type;
+	HasLargeMode,
+	ConstexprFriendly,
+	CanDefaultConstructInConstantExpressions>::type;
 
 namespace detail {
 
@@ -273,10 +245,10 @@ template <std::size_t SmallCapacity, bool HasLargeMode>
 struct small_size_type {
 	using type =
 		std::conditional_t<SmallCapacity <= bits_max(HasLargeMode ? 7 : 8),
-			std::uint8_t,
-			std::conditional_t<SmallCapacity <= bits_max(HasLargeMode ? 15 : 16),
-				std::uint16_t,
-				std::conditional_t<SmallCapacity <= bits_max(HasLargeMode ? 31 : 32), std::uint32_t, std::uint64_t>>>;
+		std::uint8_t,
+		std::conditional_t<SmallCapacity <= bits_max(HasLargeMode ? 15 : 16),
+		std::uint16_t,
+		std::conditional_t<SmallCapacity <= bits_max(HasLargeMode ? 31 : 32), std::uint32_t, std::uint64_t>>>;
 };
 template <std::size_t SmallCapacity, bool HasLargeMode>
 using small_size_type_t = typename small_size_type<SmallCapacity, HasLargeMode>::type;
@@ -291,60 +263,32 @@ struct shared_size_traits {
 		"Creating storage where the number of items that can be held in small mode is greater than can be held in large mode.");
 };
 
-// Makes it so we can use std::construct_at and std::destroy_at within a union.
-// I think this is technically not supposed to be allowed, but is currently
-// supported by MSVC, clang, and gcc.
-template <typename T, std::size_t Size>
-struct array_wrapper { T elems[Size]; };
-
-// Non-trivial types that can be default constructed within constant expressions.
-template <typename T, std::size_t SmallCapacity, bool NeedsConstexprHelp>
-struct small_data {
-	// Storage that will be uninitialized at run time, but can be default initialized at compile time.
-	uninitialized_item<array_wrapper<T, SmallCapacity>> data;
-
-	using value_type = T;
+template <typename T, bool NeedsConstexprHelp>
+struct small_data_iterators {
 	using iterator = ptr_iterator_t<T>;
-	using const_iterator = const ptr_iterator_t<const T>;
-
-	constexpr small_data() noexcept {
-		if CTP_IS_CONSTEVAL {
-			// Default construct all elements in constant expressions.
-			std::construct_at(&data.item);
-		}
-	}
-
-	constexpr ~small_data() noexcept {
-		if CTP_IS_CONSTEVAL {
-			std::destroy_at(&data.item);
-		}
-	}
-
-	constexpr iterator begin() noexcept { return data.item.elems; }
-	constexpr const_iterator begin() const noexcept { return data.item.elems; }
+	using const_iterator = ptr_iterator_t<const T>;
 };
-
-// Non-trivial types, explicitly constexpr-friendly version if default construction is not available.
-template <typename T, std::size_t SmallCapacity>
-struct small_data<T, SmallCapacity, true> {
-	uninitialized_item<T> data[SmallCapacity];
-
-	using value_type = T;
+template <typename T>
+struct small_data_iterators<T, true> {
 	using iterator = uninitialized_item_iterator<T>;
 	using const_iterator = const_uninitialized_item_iterator<T>;
-
-	constexpr iterator begin() noexcept { return data; }
-	constexpr const_iterator begin() const noexcept { return data; }
 };
+
+template <typename T, std::size_t SmallCapacity, bool NeedsConstexprHelp>
+using small_data = uninit::array<
+	T,
+	SmallCapacity,
+	// Whether we can use uninitialized_item<array_wrapper<T>>, or have to use uninitialized_item<T>[].
+	!NeedsConstexprHelp,
+	// Provide the iterators we use here so they play nice with combo_uninitialized_iterator_t.
+	small_data_iterators<T, NeedsConstexprHelp>>;
 
 template <typename T, bool ConstexprFriendly, bool AllowDefaultConstructionInConstantExpressions>
 struct small_data_needs_constexpr_helper {
 	static constexpr bool value =
 		ConstexprFriendly &&
-		!std::is_trivial_v<T> &&
-		(!AllowDefaultConstructionInConstantExpressions || !std::is_default_constructible_v<T>);
-
-
+		AllowDefaultConstructionInConstantExpressions &&
+		!std::is_default_constructible_v<T>;
 };
 template <class T, bool ConstexprFriendly, bool CanDefaultConstructInConstantExpressions>
 static constexpr bool small_data_needs_constexpr_helper_v = small_data_needs_constexpr_helper<
@@ -362,8 +306,6 @@ struct large_data {
 	using iterator = ptr_iterator_t<T>;
 	using const_iterator = ptr_iterator_t<const T>;
 
-	constexpr const T* get(std::size_t index = 0) const noexcept { return data + index; }
-	constexpr T* get(std::size_t index = 0) noexcept { return data + index; }
 	constexpr iterator begin() noexcept { return data; }
 	constexpr const_iterator begin() const noexcept { return data; }
 };
@@ -387,7 +329,7 @@ constexpr auto do_construct_at(std::size_t index, Alloc& alloc, DataT& data, Arg
 			std::uninitialized_construct_using_allocator(ptr, alloc, std::forward<Args>(args)...);
 			return ptr;
 		} else {
-			// uninitialized_item<array_wrapper<T, Size>> and elements are already constructed.
+			// uninitialized_item<uninit::array_wrapper<T, Size>> and elements are already constructed.
 			data.item.elems[index] = std::make_obj_using_allocator<T>(alloc, std::forward<Args>(args)...);
 			return data.item.elems + index;
 		}
@@ -417,7 +359,7 @@ constexpr void do_destroy_at(std::size_t index, Alloc& alloc, DataT& data) noexc
 			// uninitialized_item<T>[].
 			std::allocator_traits<Alloc>::destroy(alloc, std::addressof(data[index].item));
 		} else {
-			// uninitialized_item<array_wrapper<T, Size>> and elements are already constructed.
+			// uninitialized_item<uninit::array_wrapper<T, Size>> and elements are already constructed.
 			std::allocator_traits<Alloc>::destroy(alloc, data.item.elems + index);
 
 			// Keep a default-constructed element there to keep the array from entering an odd state.
@@ -570,8 +512,8 @@ constexpr void swap_storage_elements(
 	auto& thisCleanupAlloc,
 	auto& otherCleanupAlloc)
 	CTP_NOEXCEPT(
-		std::is_nothrow_move_constructible_v<typename Storage::value_type> &&
-		std::is_nothrow_move_assignable_v<typename Storage::value_type> &&
+		std::is_nothrow_move_constructible_v<typename Storage::value_type>&&
+		std::is_nothrow_move_assignable_v<typename Storage::value_type>&&
 		std::is_nothrow_swappable_v<typename Storage::value_type>
 	)
 {
@@ -608,111 +550,111 @@ constexpr auto do_insert(Storage& storage, Allocator& alloc, auto pos, std::size
 	if (numItems <= 0) [[unlikely]]
 		return pos;
 
-	const auto insertionPoint = static_cast<size_type>(std::distance(storage.begin(), pos));
+		const auto insertionPoint = static_cast<size_type>(std::distance(storage.begin(), pos));
 
-	constexpr bool IsAssignable =
-		sizeof...(args) == 1 &&
-		std::is_assignable_v<typename Storage::value_type, Args...>;
+		constexpr bool IsAssignable =
+			sizeof...(args) == 1 &&
+			std::is_assignable_v<typename Storage::value_type, Args...>;
 
-	const auto oldSize = storage.size();
-	const auto newSize = oldSize + numItems;
-	ctpExpects(newSize <= storage.max_size());
+		const auto oldSize = storage.size();
+		const auto newSize = oldSize + numItems;
+		ctpExpects(newSize <= storage.max_size());
 
-	if constexpr (storage.HasLargeMode) {
-		const auto capacity = storage.capacity();
-		if (newSize > capacity) {
-			const auto requestedCapacity = GrowthPolicy::apply(capacity, newSize, storage.max_size());
-			auto [ptr, newCapacity] = do_allocate(alloc, requestedCapacity);
+		if constexpr (storage.HasLargeMode) {
+			const auto capacity = storage.capacity();
+			if (newSize > capacity) {
+				const auto requestedCapacity = GrowthPolicy::apply(capacity, newSize, storage.max_size());
+				auto [ptr, newCapacity] = do_allocate(alloc, requestedCapacity);
 
-			const auto onFail = ctp::ScopeFail{[&] {
-				std::allocator_traits<Allocator>::deallocate(alloc, ptr, newCapacity);
-			}};
+				const auto onFail = ctp::ScopeFail{[&] {
+					std::allocator_traits<Allocator>::deallocate(alloc, ptr, newCapacity);
+				}};
 
-			const auto move_items_and_emplace = [&](auto& smallOrLarge) {
-				auto it = smallOrLarge.begin();
-				size_type i = 0;
-				for (; i < insertionPoint; ++i) {
-					do_construct_at(i, alloc, ptr, std::move(it[i]));
-					do_destroy_at(i, alloc, smallOrLarge.data);
-				}
+				const auto move_items_and_emplace = [&](auto& smallOrLarge) {
+					auto it = smallOrLarge.begin();
+					size_type i = 0;
+					for (; i < insertionPoint; ++i) {
+						do_construct_at(i, alloc, ptr, std::move(it[i]));
+						do_destroy_at(i, alloc, smallOrLarge.data);
+					}
 
-				for (size_type oneBeforeInsertEnd = insertionPoint + numItems - 1; i < oneBeforeInsertEnd; ++i)
-					do_construct_at(i, alloc, ptr, args...);
-				do_construct_at(i++, alloc, ptr, std::forward<Args>(args)...);
+					for (size_type oneBeforeInsertEnd = insertionPoint + numItems - 1; i < oneBeforeInsertEnd; ++i)
+						do_construct_at(i, alloc, ptr, args...);
+					do_construct_at(i++, alloc, ptr, std::forward<Args>(args)...);
 
-				for (; i < newSize; ++i) {
-					do_construct_at(i, alloc, ptr, std::move(it[i - numItems]));
-					do_destroy_at(i - numItems, alloc, smallOrLarge.data);
-				}
-			};
+					for (; i < newSize; ++i) {
+						do_construct_at(i, alloc, ptr, std::move(it[i - numItems]));
+						do_destroy_at(i - numItems, alloc, smallOrLarge.data);
+					}
+				};
 
-			if (storage.is_small_mode()) {
-				move_items_and_emplace(storage.small);
+				if (storage.is_small_mode()) {
+					move_items_and_emplace(storage.small);
 
-				std::destroy_at(&storage.small);
-				std::construct_at(&storage.large);
-				storage.large.data = ptr;
-				storage.large.capacity = static_cast<size_type>(newCapacity);
-			} else {
-				move_items_and_emplace(storage.large);
-
-				std::allocator_traits<Allocator>::deallocate(alloc, storage.large.data, storage.large.capacity);
-				storage.large.data = ptr;
-				storage.large.capacity = static_cast<size_type>(newCapacity);
-			}
-
-			storage.set_size(newSize, Mode::Large);
-			return storage.begin() + insertionPoint;
-		}
-	}
-
-	const auto shift_items_and_emplace = [&](auto& smallOrLarge) {
-		// Move items after the insertion point over by numItems.
-		auto it = smallOrLarge.begin();
-		const size_type insertionEnd = static_cast<size_type>(insertionPoint + numItems);
-		auto i = static_cast<size_type>(newSize);
-
-		// Move construct any items in previously-unused storage.
-		for (; i > oldSize && i > insertionEnd; --i)
-			do_construct_at(i - 1, alloc, smallOrLarge.data, std::move(it[i - 1 - numItems]));
-
-		// Move-assign items in any overlapping storage.
-		for (; i > insertionEnd; --i)
-			it[i - 1] = std::move(it[i - 1 - numItems]);
-
-		// Inserting items starts.
-
-		for (; i > oldSize && i > insertionPoint + 1; --i)
-			do_construct_at(i - 1, alloc, smallOrLarge.data, args...);
-
-		if (i <= oldSize) {
-			for (; i > insertionPoint + 1; --i) {
-				if constexpr (IsAssignable) {
-					it[i - 1] = (args,...); // There's one arg, so we can expand with the comma operator.
+					std::destroy_at(&storage.small);
+					std::construct_at(&storage.large);
+					storage.large.data = ptr;
+					storage.large.capacity = static_cast<size_type>(newCapacity);
 				} else {
-					it[i - 1] = typename Storage::value_type{args...};
-				}
-			}
-			if constexpr (IsAssignable) {
-				it[insertionPoint] = (std::forward<Args>(args),...);  // One arg, can expand with comma.
-			} else {
-				it[insertionPoint] = typename Storage::value_type{std::forward<Args>(args)...};
-			}
-		} else {
-			do_construct_at(insertionPoint, alloc, smallOrLarge.data, std::forward<Args>(args)...);
-		}
-	};
+					move_items_and_emplace(storage.large);
 
-	if constexpr (storage.HasLargeMode) {
-		if (!storage.is_small_mode()) {
-			shift_items_and_emplace(storage.large);
-			storage.set_size(newSize, Mode::Large);
-			return pos;
+					std::allocator_traits<Allocator>::deallocate(alloc, storage.large.data, storage.large.capacity);
+					storage.large.data = ptr;
+					storage.large.capacity = static_cast<size_type>(newCapacity);
+				}
+
+				storage.set_size(newSize, Mode::Large);
+				return storage.begin() + insertionPoint;
+			}
 		}
-	}
-	shift_items_and_emplace(storage.small);
-	storage.set_size(newSize, Mode::Small);
-	return pos;
+
+		const auto shift_items_and_emplace = [&](auto& smallOrLarge) {
+			// Move items after the insertion point over by numItems.
+			auto it = smallOrLarge.begin();
+			const size_type insertionEnd = static_cast<size_type>(insertionPoint + numItems);
+			auto i = static_cast<size_type>(newSize);
+
+			// Move construct any items in previously-unused storage.
+			for (; i > oldSize && i > insertionEnd; --i)
+				do_construct_at(i - 1, alloc, smallOrLarge.data, std::move(it[i - 1 - numItems]));
+
+			// Move-assign items in any overlapping storage.
+			for (; i > insertionEnd; --i)
+				it[i - 1] = std::move(it[i - 1 - numItems]);
+
+			// Inserting items starts.
+
+			for (; i > oldSize && i > insertionPoint + 1; --i)
+				do_construct_at(i - 1, alloc, smallOrLarge.data, args...);
+
+			if (i <= oldSize) {
+				for (; i > insertionPoint + 1; --i) {
+					if constexpr (IsAssignable) {
+						it[i - 1] = (args, ...); // There's one arg, so we can expand with the comma operator.
+					} else {
+						it[i - 1] = typename Storage::value_type{args...};
+					}
+				}
+				if constexpr (IsAssignable) {
+					it[insertionPoint] = (std::forward<Args>(args), ...);  // One arg, can expand with comma.
+				} else {
+					it[insertionPoint] = typename Storage::value_type{std::forward<Args>(args)...};
+				}
+			} else {
+				do_construct_at(insertionPoint, alloc, smallOrLarge.data, std::forward<Args>(args)...);
+			}
+		};
+
+		if constexpr (storage.HasLargeMode) {
+			if (!storage.is_small_mode()) {
+				shift_items_and_emplace(storage.large);
+				storage.set_size(newSize, Mode::Large);
+				return pos;
+			}
+		}
+		shift_items_and_emplace(storage.small);
+		storage.set_size(newSize, Mode::Small);
+		return pos;
 }
 
 template <typename GrowthPolicy, typename Storage, typename Allocator, std::forward_iterator FwdIt>
@@ -840,7 +782,7 @@ constexpr auto do_insert_with_iterators(Storage& storage, Allocator& alloc, auto
 
 template <typename Storage, typename Allocator, typename It>
 constexpr auto do_erase(Storage& storage, Allocator& alloc, It first, It last)
-	noexcept(std::is_nothrow_move_assignable_v<typename Storage::value_type>)
+noexcept(std::is_nothrow_move_assignable_v<typename Storage::value_type>)
 {
 	using size_type = typename Storage::size_type;
 
@@ -1091,8 +1033,7 @@ template <
 	typename ConstIterator,
 	bool SmallDataNeedsConstexprHelp>
 class small_container_storage
-	: public small_container_storage_base<T, SmallCapacity, LargeSizeType>
-{
+	: public small_container_storage_base<T, SmallCapacity, LargeSizeType> {
 public:
 	using Base = small_container_storage_base<T, SmallCapacity, LargeSizeType>;
 	using size_type = typename Base::shared_size_type;
@@ -1120,7 +1061,7 @@ public:
 		//};
 		// Test which member is active in constant expressions and use test bit at runtime.
 #endif
-	using small_type = small_data<T, Base::SmallCapacity, SmallDataNeedsConstexprHelp>;
+		using small_type = small_data<T, Base::SmallCapacity, SmallDataNeedsConstexprHelp>;
 	union {
 		small_type small;
 		large_data<T, size_type> large;
@@ -1175,8 +1116,7 @@ template <
 	typename ConstIterator,
 	bool SmallDataNeedsConstexprHelp>
 class small_container_storage<T, SmallCapacity, void, Iterator, ConstIterator, SmallDataNeedsConstexprHelp>
-	: public small_container_storage_base<T, SmallCapacity>
-{
+	: public small_container_storage_base<T, SmallCapacity> {
 	using Base = small_container_storage_base<T, SmallCapacity>;
 public:
 	using size_type = typename Base::shared_size_type;
@@ -1204,7 +1144,7 @@ struct get_storage_for_n_result {
 // mode if neccessary.
 template <typename GrowthPolicy, typename Storage, typename Allocator>
 [[nodiscard]] constexpr auto get_storage_for_n(Storage& storage, typename Storage::size_type numItems, Allocator& alloc)
-	-> get_storage_for_n_result<typename Storage::size_type>
+-> get_storage_for_n_result<typename Storage::size_type>
 {
 	const auto currentSize = storage.size();
 	if constexpr (!storage.HasLargeMode) {
@@ -1386,16 +1326,16 @@ static constexpr void destroy_and_deallocate(Storage& storage, Alloc& alloc) noe
 		const bool isSmall = storage.is_small_mode();
 
 		if (isSmall) {
-			for (size_type i = 0; i < size; ++i)
-				do_destroy_at(i, alloc, storage.small.data);
+			for (size_type i = size; i > 0; --i)
+				do_destroy_at(i - 1, alloc, storage.small.data);
 		} else {
-			for (size_type i = 0; i < size; ++i)
-				do_destroy_at(i, alloc, storage.large.data);
+			for (size_type i = size; i > 0; --i)
+				do_destroy_at(i - 1, alloc, storage.large.data);
 			std::allocator_traits<Alloc>::deallocate(alloc, storage.large.data, storage.large.capacity);
 		}
 	} else {
-		for (size_type i = 0; i < size; ++i)
-			do_destroy_at(i, alloc, storage.small.data);
+		for (size_type i = size; i > 0; --i)
+			do_destroy_at(i - 1, alloc, storage.small.data);
 	}
 }
 
@@ -1424,8 +1364,8 @@ static constexpr void construct_n(Storage& storage, Alloc& alloc, typename Stora
 	if (count <= 0) [[unlikely]]
 		return;
 
-	const auto [mode, idx] = get_storage_for_n<GrowthPolicy>(storage, count, alloc);
-	impl_construct_n(storage, alloc, mode, idx, idx + count, std::forward<Args>(args)...);
+		const auto [mode, idx] = get_storage_for_n<GrowthPolicy>(storage, count, alloc);
+		impl_construct_n(storage, alloc, mode, idx, idx + count, std::forward<Args>(args)...);
 }
 
 // Constructs one element, setting the size and changing to large mode if necessary.
@@ -1441,13 +1381,13 @@ static constexpr void impl_construct_from_range(Storage& storage, Alloc& alloc, 
 	if constexpr (Storage::HasLargeMode) {
 		if (mode == Mode::Large) {
 			for (; start < end; ++start, ++it)
-				do_construct_at(+start, alloc, storage.large.data, *it);
+				do_construct_at(start, alloc, storage.large.data, *it);
 			return;
 		}
 	}
 
 	for (; start < end; ++start, ++it)
-		do_construct_at(+start, alloc, storage.small.data, *it);
+		do_construct_at(start, alloc, storage.small.data, *it);
 }
 
 template <class GrowthPolicy, class Storage, class Alloc, class... Args>
@@ -1455,23 +1395,23 @@ static constexpr void construct_from_range(Storage& storage, Alloc& alloc, auto 
 	if (first == last) [[unlikely]]
 		return;
 
-	if constexpr (std::same_as<typename std::iterator_traits<decltype(first)>::iterator_category, std::input_iterator_tag>) {
-		for (; first != last; ++first) {
-			const auto [mode, idx] = get_storage_for_n<GrowthPolicy>(storage, 1, alloc);
-			// Because we might change to large mode in the middle, call this with one element each time.
-			impl_construct_from_range(storage, alloc, mode, idx, idx + 1, first);
+		if constexpr (std::same_as<typename std::iterator_traits<decltype(first)>::iterator_category, std::input_iterator_tag>) {
+			for (; first != last; ++first) {
+				const auto [mode, idx] = get_storage_for_n<GrowthPolicy>(storage, 1, alloc);
+				// Because we might change to large mode in the middle, call this with one element each time.
+				impl_construct_from_range(storage, alloc, mode, idx, idx + 1, first);
+			}
+		} else {
+			// should at least have a forward iterator.
+			const auto count = static_cast<typename Storage::size_type>(std::distance(first, last));
+			const auto [mode, idx] = get_storage_for_n<GrowthPolicy>(storage, count, alloc);
+			impl_construct_from_range(storage, alloc, mode, idx, idx + count, first);
 		}
-	} else {
-		// should at least have a forward iterator.
-		const auto count = static_cast<typename Storage::size_type>(std::distance(first, last));
-		const auto [mode, idx] = get_storage_for_n<GrowthPolicy>(storage, count, alloc);
-		impl_construct_from_range(storage, alloc, mode, idx, idx + count, first);
-	}
 }
 
 template <class Storage1, class Storage2>
 constexpr void move_elements(Storage1& self, Storage2&& other, auto& sAlloc, auto& oAlloc, auto& newAlloc)
-	CTP_NOEXCEPT(noexcept(move_overwrite_storage(0, 0, newAlloc, sAlloc, self.small, oAlloc, other.small)))
+CTP_NOEXCEPT(noexcept(move_overwrite_storage(0, 0, newAlloc, sAlloc, self.small, oAlloc, other.small)))
 {
 	auto oldSize = self.size();
 	const auto newSize = other.size();
@@ -1516,7 +1456,7 @@ constexpr void move_elements(Storage1& self, Storage2&& other, auto& sAlloc, aut
 // Attempt to take a large pointer, otherwise fall back to element-wise move.
 template <class Storage1, class Storage2, class OtherAlloc, class NewAlloc>
 constexpr void move_storage(Storage1& self, Storage2&& other, auto& sAlloc, OtherAlloc& oAlloc, NewAlloc& newAlloc)
-	CTP_NOEXCEPT(noexcept(move_elements(self, other, sAlloc, oAlloc, newAlloc)))
+CTP_NOEXCEPT(noexcept(move_elements(self, other, sAlloc, oAlloc, newAlloc)))
 {
 	// Handle large pointer stealing cases.
 	if constexpr (self.HasLargeMode && other.HasLargeMode) {
@@ -1583,13 +1523,13 @@ public:
 	using iterator = iterator_selector_t<
 		T,
 		HasLargeMode,
-		options::constexpr_friendly,
+		options::force_constexpr_friendliness,
 		options::allow_default_construction_in_constant_expressions>;
 
 	using const_iterator = iterator_selector_t<
 		const T,
 		HasLargeMode,
-		options::constexpr_friendly,
+		options::force_constexpr_friendliness,
 		options::allow_default_construction_in_constant_expressions>;
 
 	using reverse_iterator = ctp::reverse_iterator<iterator>;
@@ -1603,15 +1543,15 @@ protected:
 	struct dispatch_to_template_tag {};
 
 	using storage_type = detail::small_container_storage<
-	                         T,
-	                         detail::GetSmallCapacity<T, HasLargeMode, typename options::large_size_type>(MinSmallCapacity),
-	                         std::conditional_t<HasLargeMode, typename options::large_size_type, void>,
-	                         iterator,
-	                         const_iterator,
-	                         detail::small_data_needs_constexpr_helper_v<
-	                            T,
-	                            options::constexpr_friendly,
-	                            options::allow_default_construction_in_constant_expressions>>;
+		T,
+		detail::GetSmallCapacity<T, HasLargeMode, typename options::large_size_type>(MinSmallCapacity),
+		std::conditional_t<HasLargeMode, typename options::large_size_type, void>,
+		iterator,
+		const_iterator,
+		detail::small_data_needs_constexpr_helper_v<
+		T,
+		options::force_constexpr_friendliness,
+		options::allow_default_construction_in_constant_expressions>>;
 	using growth_policy = typename options::growth_policy;
 
 	using rebind_alloc = typename std::allocator_traits<Allocator>::template rebind_alloc<T>;
@@ -1625,8 +1565,14 @@ protected:
 		}
 	}
 
+	// A few of the STL interface functions take const_iterators even when the intention
+	// is to modify the container with them. Provide a method to allow convertion to a non-const iterator.
 	static constexpr iterator make_nonconst_iterator(const_iterator it) noexcept {
-		return detail::const_iterator_converter::cast(it);
+		if constexpr (std::is_same_v<const_uninitialized_item_iterator<T>, const_iterator>) {
+			return iterator(const_cast<uninitialized_item<T>*>(it.get_item()));
+		} else {
+			return iterator(const_cast<T*>(it.get()));
+		}
 	}
 
 private:
@@ -1760,7 +1706,7 @@ public:
 		return storage_.begin()[static_cast<storage_size_t>(i)];
 	}
 
-	[[nodiscard]] constexpr reference at(this auto& self, size_type i) CTP_NOEXCEPT(false) {
+	[[nodiscard]] constexpr auto at(this auto& self, size_type i) CTP_NOEXCEPT(false) -> decltype(self[i]) {
 		if (const auto size = self.size(); i >= size) [[unlikely]] {
 #if CTP_USE_EXCEPTIONS
 			throw std::out_of_range(
@@ -1769,7 +1715,7 @@ public:
 			std::terminate();
 #endif
 		}
-		return self.storage_.begin()[static_cast<storage_size_t>(i)];
+		return self[i];
 	}
 
 	[[nodiscard]] constexpr bool empty() const noexcept { return storage_.size() == 0; }
@@ -1804,17 +1750,17 @@ public:
 	[[nodiscard]] constexpr reference back() noexcept { return *last(); }
 	[[nodiscard]] constexpr const_reference back() const noexcept { return *last(); }
 
-	constexpr void reserve(size_type new_capacity) noexcept(CTP_NOTHROW_ALLOCS && std::is_nothrow_move_constructible_v<T>) {
+	constexpr void reserve(size_type new_capacity) noexcept(CTP_NOTHROW_ALLOCS&& std::is_nothrow_move_constructible_v<T>) {
 		detail::do_reserve(storage_, static_cast<storage_size_t>(new_capacity), alloc_);
 	}
 
 	constexpr void resize(size_type new_size)
-		noexcept(CTP_NOTHROW_ALLOCS && std::is_nothrow_default_constructible_v<T>)
+		noexcept(CTP_NOTHROW_ALLOCS&& std::is_nothrow_default_constructible_v<T>)
 	{
 		detail::do_resize(storage_, static_cast<storage_size_t>(new_size), alloc_);
 	}
 	constexpr void resize(size_type new_size, const value_type& value)
-		noexcept(CTP_NOTHROW_ALLOCS && std::is_nothrow_copy_constructible_v<T>)
+		noexcept(CTP_NOTHROW_ALLOCS&& std::is_nothrow_copy_constructible_v<T>)
 	{
 		detail::do_resize(storage_, static_cast<storage_size_t>(new_size), alloc_, value);
 	}
@@ -1896,45 +1842,19 @@ public:
 	constexpr iterator insert_range(const_iterator pos, auto&& range)
 		noexcept(CTP_NOTHROW_ALLOCS&& std::is_nothrow_copy_constructible_v<T>)
 	{
-		if constexpr (std::is_rvalue_reference_v<decltype(range)>) {
-			return detail::do_insert_with_iterators<growth_policy>(
-				storage_,
-				alloc_,
-				make_nonconst_iterator(pos),
-				move_iterator{range.begin()},
-				move_iterator{range.end()});
-
-			if constexpr (requires { range.clear(); }) {
-				range.clear();
-			}
-		} else {
-			return detail::do_insert_with_iterators<growth_policy>(
-				storage_, alloc_, make_nonconst_iterator(pos), range.begin(), range.end());
-		}
+		return detail::do_insert_with_iterators<growth_policy>(
+			storage_, alloc_, make_nonconst_iterator(pos), range.begin(), range.end());
 	}
 
 	constexpr iterator append_range(auto&& range)
 		noexcept(CTP_NOTHROW_ALLOCS&& std::is_nothrow_copy_constructible_v<T>)
 	{
-		if constexpr (std::is_rvalue_reference_v<decltype(range)>) {
-			return detail::do_insert_with_iterators<growth_policy>(
-				storage_,
-				alloc_,
-				end(),
-				move_iterator{range.begin()},
-				move_iterator{range.end()});
-
-			if constexpr (requires { range.clear(); }) {
-				range.clear();
-			}
-		} else {
-			return detail::do_insert_with_iterators<growth_policy>(storage_, alloc_, end(), range.begin(), range.end());
-		}
+		return detail::do_insert_with_iterators<growth_policy>(storage_, alloc_, end(), range.begin(), range.end());
 	}
 
 	template <typename... Args>
 	constexpr iterator emplace(const_iterator pos, Args&&... args)
-		noexcept(CTP_NOTHROW_ALLOCS&& std::is_nothrow_constructible_v<T, Args...> && std::is_nothrow_copy_constructible_v<T>)
+		noexcept(CTP_NOTHROW_ALLOCS&& std::is_nothrow_constructible_v<T, Args...>&& std::is_nothrow_copy_constructible_v<T>)
 	{
 		return detail::do_insert<growth_policy>(
 			storage_, alloc_, make_nonconst_iterator(pos), 1, std::forward<Args>(args)...);
@@ -1972,19 +1892,7 @@ public:
 			reserve(std::ranges::distance(range));
 		}
 
-		if constexpr (std::is_rvalue_reference_v<decltype(range)>) {
-			detail::do_assign_with_iterators<growth_policy>(
-				storage_,
-				alloc_,
-				move_iterator{range.begin()},
-				move_iterator{range.end()});
-
-			if constexpr (requires { range.clear(); }) {
-				range.clear();
-			}
-		} else {
-			detail::do_assign_with_iterators<growth_policy>(storage_, alloc_, range.begin(), range.end());
-		}
+		detail::do_assign_with_iterators<growth_policy>(storage_, alloc_, range.begin(), range.end());
 	}
 private:
 	template <std::size_t C2, class A2, class O2>
@@ -2021,7 +1929,7 @@ template <typename T, std::size_t MinSmallCapacity, typename Allocator, SmallSto
 template <std::size_t C2, class A2, class O2>
 constexpr container<T, MinSmallCapacity, Allocator, options>::
 container(dispatch_to_template_tag, container<T, C2, A2, O2>&& o)
-	CTP_NOEXCEPT(noexcept(detail::move_storage(storage_, o.storage_, alloc_, alloc_, alloc_)))
+CTP_NOEXCEPT(noexcept(detail::move_storage(storage_, o.storage_, alloc_, alloc_, alloc_)))
 	: alloc_{std::move(o.alloc_)}
 {
 	// Only one allocator matters here.
@@ -2043,7 +1951,7 @@ template <typename T, std::size_t MinSmallCapacity, typename Allocator, SmallSto
 template <std::size_t C2, typename A2, class O2>
 constexpr container<T, MinSmallCapacity, Allocator, options>::
 container(container<T, C2, A2, O2>&& o, const Allocator& alloc)
-	CTP_NOEXCEPT(noexcept(detail::move_storage(storage_, o.storage_, alloc_, alloc_, alloc_)))
+CTP_NOEXCEPT(noexcept(detail::move_storage(storage_, o.storage_, alloc_, alloc_, alloc_)))
 	: alloc_{alloc}
 {
 	// Only one allocator matters here.
@@ -2112,7 +2020,7 @@ template <typename T, std::size_t MinSmallCapacity, typename Allocator, SmallSto
 template <std::size_t C2, class A2, class O2>
 constexpr container<T, MinSmallCapacity, Allocator, options>& container<T, MinSmallCapacity, Allocator, options>::
 move_assignment(container<T, C2, A2, O2>&& o)
-	CTP_NOEXCEPT(noexcept(detail::move_storage(storage_, o.storage_, alloc_, o.alloc_, alloc_)))
+CTP_NOEXCEPT(noexcept(detail::move_storage(storage_, o.storage_, alloc_, o.alloc_, alloc_)))
 {
 	if constexpr (std::same_as<container, container<T, C2, A2, O2>>) {
 		if (this == &o) [[unlikely]]
@@ -2180,56 +2088,29 @@ container(std::from_range_t, Range&& range, const Allocator& alloc)
 		const auto count = static_cast<storage_size_t>(std::ranges::distance(range));
 		[[maybe_unused]] const auto [mode, idx] = get_storage_for_n<growth_policy>(storage_, count, alloc_);
 		auto it = range.begin();
-		if constexpr (std::is_rvalue_reference_v<decltype(range)>) {
-			if constexpr (HasLargeMode) {
-				if (mode == Mode::Large) {
-					for (auto i = 0; i < count; ++i, ++it)
-						detail::do_construct_at(i, alloc_, storage_.large.data, std::move(*it));
-					return;
-				}
-			}
 
-			for (auto i = 0; i < count; ++i, ++it)
-				detail::do_construct_at(i, alloc_, storage_.small.data, std::move(*it));
-		} else {
-			if constexpr (HasLargeMode) {
-				if (mode == Mode::Large) {
-					for (auto i = 0; i < count; ++i, ++it)
-						detail::do_construct_at(i, alloc_, storage_.large.data, *it);
-					return;
-				}
+		if constexpr (HasLargeMode) {
+			if (mode == Mode::Large) {
+				for (auto i = 0; i < count; ++i, ++it)
+					detail::do_construct_at(i, alloc_, storage_.large.data, *it);
+				return;
 			}
-
-			for (auto i = 0; i < count; ++i, ++it)
-				detail::do_construct_at(i, alloc_, storage_.small.data, *it);
 		}
+
+		for (auto i = 0; i < count; ++i, ++it)
+			detail::do_construct_at(i, alloc_, storage_.small.data, *it);
 	} else {
-		if constexpr (std::is_rvalue_reference_v<decltype(range)>) {
-			for (auto&& item : range) {
-				const auto [mode, i] = get_storage_for_n<growth_policy>(storage_, 1, alloc_);
+		for (auto&& item : range) {
+			const auto [mode, i] = get_storage_for_n<growth_policy>(storage_, 1, alloc_);
 
-				if constexpr (HasLargeMode) {
-					if (mode == Mode::Large) {
-						detail::do_construct_at(i, alloc_, storage_.large.data, std::move(item));
-						continue;
-					}
+			if constexpr (HasLargeMode) {
+				if (mode == Mode::Large) {
+					detail::do_construct_at(i, alloc_, storage_.large.data, item);
+					continue;
 				}
-
-				detail::do_construct_at(i, alloc_, storage_.small.data, std::move(item));
 			}
-		} else {
-			for (auto&& item : range) {
-				const auto [mode, i] = get_storage_for_n<growth_policy>(storage_, 1, alloc_);
 
-				if constexpr (HasLargeMode) {
-					if (mode == Mode::Large) {
-						detail::do_construct_at(i, alloc_, storage_.large.data, item);
-						continue;
-					}
-				}
-
-				detail::do_construct_at(i, alloc_, storage_.small.data, item);
-			}
+			detail::do_construct_at(i, alloc_, storage_.small.data, item);
 		}
 	}
 }
@@ -2238,7 +2119,7 @@ template <typename T, std::size_t MinSmallCapacity, typename Allocator, SmallSto
 template <std::size_t C2, class A2, class O2>
 constexpr void container<T, MinSmallCapacity, Allocator, options>::
 swap(container<T, C2, A2, O2>& o)
-	CTP_NOEXCEPT(noexcept(detail::swap_storage_elements(0, 0, storage_.small, o.storage_.small, alloc_, o.alloc_, alloc_, o.alloc_)))
+CTP_NOEXCEPT(noexcept(detail::swap_storage_elements(0, 0, storage_.small, o.storage_.small, alloc_, o.alloc_, alloc_, o.alloc_)))
 {
 	using std::swap;
 

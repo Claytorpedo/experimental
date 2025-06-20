@@ -343,8 +343,8 @@ constexpr bool CopyAssignTests(const std::array<DataT, DataSize>& data) {
 		container_type container;
 
 		const auto ilist = std::initializer_list<T>{data[0], data[1], data[2]};
-// The issue is specifically with the above initializer_list.
-// The test is working fine via debugger inspection.
+		// The issue is specifically with the above initializer_list.
+		// The test is working fine via debugger inspection.
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
@@ -612,9 +612,18 @@ constexpr bool SwapTests(const std::array<DataT, DataSize>& data) {
 	return true;
 }
 
-// TODO: test copy/move constructors taking separate allocator
+template <typename T, typename DataT>
+constexpr bool FromRangeConstructTests(const std::array<DataT, DataSize>& data) {
+	using namespace ctp::small_storage;
+	using container_type = container<T, 2, std::allocator<T>, can_grow_options>;
 
-// TODO: test range conversion constructor.
+	container_type c(std::from_range, data);
+	ctpAssert(c.size() == data.size());
+	for (std::size_t i = 0; i < data.size(); ++i)
+		ctpAssert(c[i] == data[i]);
+
+	return true;
+}
 
 constexpr auto RunCopyConstructTestsTrivial = CopyConstructTests<int>(IntData);
 constexpr auto RunCopyConstructTestsNonTrivial = CopyConstructTests<std::string>(StringData);
@@ -633,6 +642,10 @@ constexpr auto RunMoveAssignTestsNonTrivial = MoveAssignTests<std::string>(Strin
 constexpr auto RunMoveAssignTestsNoDefault = MoveAssignTests<NoDefaultConstruct>(NoDefaultConstructData);
 
 constexpr auto RunSwapTestsTrivial = SwapTests<int>(IntData);
+
+constexpr auto RunFromRangeConstructTestsTrivial = FromRangeConstructTests<int>(IntData);
+constexpr auto RunFromRangeConstructTestsNonTrivial = FromRangeConstructTests<std::string>(StringData);
+constexpr auto RunFromRangeConstructTestsNoDefault = FromRangeConstructTests<NoDefaultConstruct>(NoDefaultConstructData);
 
 } // namespace
 
@@ -654,6 +667,10 @@ TEST_CASE("Construction tests.", "[Tools][small_storage]") {
 	MoveAssignTests<int>(IntData);
 	MoveAssignTests<std::string>(StringData);
 	MoveAssignTests<NoDefaultConstruct>(NoDefaultConstructData);
+
+	FromRangeConstructTests<int>(IntData);
+	FromRangeConstructTests<std::string>(StringData);
+	FromRangeConstructTests<NoDefaultConstruct>(NoDefaultConstructData);
 
 	SwapTests<int>(IntData);
 }

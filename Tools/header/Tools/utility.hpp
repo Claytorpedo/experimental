@@ -37,14 +37,26 @@ struct ProjectionAccessor {
 
 	template<typename F, typename T>
 	constexpr auto operator()(F&& f, T&& t) const
-			noexcept(noexcept(forward<F>(f)(forward<T>(t))))
-			-> decltype(forward<F>(f)(forward<T>(t)))
+		noexcept(noexcept(forward<F>(f)(forward<T>(t))))
+		-> decltype(forward<F>(f)(forward<T>(t)))
 	{
 		return forward<F>(f)(forward<T>(t));
 	}
 };
 
 inline constexpr ProjectionAccessor project_onto{};
+
+// Wrap a template into a struct to be extracted with a type via unwrap_template.
+// e.g.
+// using wrapped_vector = template_wrapper<std::vector>
+// unwrap<wrapper_vector, int> vec; // vector<int>
+template <template<class...> class T>
+struct template_wrapper {
+	template <class... Ts>
+	using type = T<Ts...>;
+};
+template <typename Wrapped, typename T>
+using unwrap_template = typename Wrapped::template type<T>;
 
 } // ctp
 

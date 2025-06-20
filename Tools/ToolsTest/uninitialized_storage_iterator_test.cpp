@@ -1,5 +1,5 @@
 #include <catch.hpp>
-#include <Tools/uninitialized_storage_iterator.hpp>
+#include <Tools/uninitialized_storage.hpp>
 
 #include <Tools/debug.hpp>
 

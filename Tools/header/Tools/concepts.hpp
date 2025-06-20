@@ -8,6 +8,9 @@
 
 namespace ctp::concepts {
 
+template <class E>
+concept Enum = std::is_enum_v<E>;
+
 template <class T>
 concept Pointer = std::is_pointer_v<T>;
 
@@ -26,12 +29,12 @@ concept HasData = requires (T t) {
 };
 
 template <typename Op, typename Val>
-concept UnaryOp = requires (Op&& op, Val&& val) {
+concept UnaryOp = requires (Op && op, Val && val) {
 	op(forward<Val>(val));
 };
 
 template <typename Op, typename Lhs, typename Rhs>
-concept BinaryOp = requires (Op&& op, Lhs&& lhs, Rhs&& rhs) {
+concept BinaryOp = requires (Op && op, Lhs && lhs, Rhs && rhs) {
 	op(forward<Lhs>(lhs), forward<Rhs>(rhs));
 };
 

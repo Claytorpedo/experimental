@@ -3,6 +3,8 @@
 #include <catch.hpp>
 #include <Tools/small_storage.hpp>
 
+#include <Tools/test/catch_test_helpers.hpp>
+
 #include "small_storage_test_helpers.hpp"
 
 #include <string>
@@ -48,7 +50,7 @@ class loop_iterator_t : public ctp::iterator_t<loop_iterator_t<S>, S> {
 
 public:
 	constexpr loop_iterator_t(std::size_t i, std::size_t size, S* data) noexcept
-		: i_{i}, size_{size}, data_ { data } {};
+		: i_{i}, size_{size}, data_{data} {};
 	constexpr loop_iterator_t() noexcept = default;
 };
 
@@ -80,10 +82,10 @@ constexpr bool BasicSmallTests() {
 	ctpAssert(*container.data() == 0);
 
 	// We can use the raw data pointer if T is a trivial type, or if we're at runtime.
-	if constexpr (std::is_trivial_v<typename ContainerType::value_type>) {
+	if constexpr (ctp::small_storage::can_trivially_construct_and_assign_v<typename ContainerType::value_type>) {
 		ctpAssert(*(container.data() + 1) == 1);
 	}
-	if CTP_NOT_CONSTEVAL{
+	if CTP_NOT_CONSTEVAL {
 		ctpAssert(*(container.data() + 1) == 1);
 	}
 
@@ -146,10 +148,10 @@ constexpr bool BasicSmallTestsNonTrivial() {
 	ctpAssert(*container.data() == "one"sv);
 
 	// We can use the raw data pointer if T is a trivial type, or if we're at runtime.
-	if constexpr (std::is_trivial_v<typename ContainerType::value_type>) {
+	if constexpr (std::is_trivially_default_constructible_v<typename ContainerType::value_type>) {
 		ctpAssert(*(container.data() + 1) == "two"sv);
 	}
-	if CTP_NOT_CONSTEVAL{
+	if CTP_NOT_CONSTEVAL {
 		ctpAssert(*(container.data() + 1) == "two"sv);
 	}
 
@@ -266,8 +268,72 @@ constexpr bool BasicLargeTests() {
 
 template <typename ContainerType>
 constexpr bool BasicLargeTestsNonTrivial() {
+	constexpr std::size_t SmallCapacity = ContainerType::SmallCapacity;
+	constexpr auto LargeMaxCapacity =
+		ctp::small_storage::detail::bits_max(sizeof(typename ContainerType::size_type) * 8 - 1);
 
-	// TODO
+	ContainerType container;
+
+	ctpAssert(container.size() == 0);
+	ctpAssert(container.empty());
+	ctpAssert(container.is_empty());
+	ctpAssert(container.max_size() == LargeMaxCapacity);
+	ctpAssert(container.capacity() == SmallCapacity);
+
+	ctpAssert(container.push_back("one") == "one"sv);
+	ctpAssert(container.emplace_back("two") == "two"sv);
+
+	ctpAssert(*container.data() == "one"sv);
+	ctpAssert(*(container.data() + 1) == "two"sv);
+	ctpAssert(container.size() == 2);
+	ctpAssert(!container.empty());
+	ctpAssert(!container.is_empty());
+	ctpAssert(container.max_size() == LargeMaxCapacity);
+	ctpAssert(container.capacity() == SmallCapacity);
+	ctpAssert(container[0] == "one"sv);
+	ctpAssert(container[1] == "two"sv);
+	ctpAssert(container.front() == "one"sv);
+	ctpAssert(container.back() == "two"sv);
+
+	// Some iterator tests.
+	ctpAssert(*container.begin() == "one"sv);
+	ctpAssert(*container.last() == "two"sv);
+	{
+		std::string_view strs[] = {"one"sv, "two"sv};
+		int i = 0;
+		for (const auto& val : container)
+			ctpAssert(val == strs[i++]);
+	}
+
+	// Switch to large mode.
+	ctpAssert(container.emplace_back("three") == "three"sv);
+
+	ctpAssert(container[0] == "one"sv);
+	ctpAssert(container[1] == "two"sv);
+	ctpAssert(container[2] == "three"sv);
+
+	{
+		const auto currentCapacity = container.capacity();
+		container.clear();
+
+		ctpAssert(container.size() == 0);
+		ctpAssert(container.capacity() == currentCapacity);
+	}
+
+	container.reset();
+
+	ctpAssert(container.size() == 0);
+	ctpAssert(container.capacity() == SmallCapacity);
+
+	container.reserve(2);
+
+	ctpAssert(container.size() == 0);
+	ctpAssert(container.capacity() == SmallCapacity);
+
+	container.reserve(10);
+
+	ctpAssert(container.size() == 0);
+	ctpAssert(container.capacity() == 10);
 
 	return true;
 }
@@ -541,7 +607,7 @@ constexpr bool InsertTests(const std::array<DataT, DataSize>& data) {
 		ctpAssert(container.size() == 5);
 		ctpAssert(it == container.begin());
 
-		it = container.insert(container.end(), std::initializer_list<T>{*(data.end() - 2), *(data.end() - 1)});
+		it = container.insert(container.end(), std::initializer_list<T>{*(data.end() - 2), * (data.end() - 1)});
 
 		ctpAssert(container.size() == 7);
 		ctpAssert(it == container.end() - 2);
@@ -549,7 +615,7 @@ constexpr bool InsertTests(const std::array<DataT, DataSize>& data) {
 		// Inserting near the end, where we will overlap it.
 		it = container.insert(
 			container.end() - 2,
-			std::initializer_list<T>{*(data.end() - 3), *(data.end() - 2), *(data.end() - 1)});
+			std::initializer_list<T>{*(data.end() - 3), * (data.end() - 2), * (data.end() - 1)});
 
 		ctpAssert(container.size() == 10);
 		ctpAssert(it == container.end() - 2 - 3); // -2 for insert pos, -3 for num inserted.
@@ -684,9 +750,9 @@ constexpr bool InsertTests(const std::array<DataT, DataSize>& data) {
 			container.insert(container.begin() + 5, capacity, data[1]);
 
 			typename ContainerOptions::large_size_type i = 0;
-			for (;i < 5; ++i)
+			for (; i < 5; ++i)
 				ctpAssert(container[i] == data[0]);
-			for (;i < 5 + capacity; ++i)
+			for (; i < 5 + capacity; ++i)
 				ctpAssert(container[i] == data[1]);
 			for (; i < 11 + capacity; ++i)
 				ctpAssert(container[i] == data[0]);
@@ -1175,21 +1241,21 @@ constexpr bool AssignTests(const std::array<DataT, DataSize>& data) {
 
 		// Assign to smaller amount
 		container.assign(3, data[1]);
-		
+
 		ctpAssert(container.size() == 3);
 		for (const auto& item : container)
 			ctpAssert(item == data[1]);
 
 		// Assign to a larger amount
 		container.assign(6, data[2]);
-		
+
 		ctpAssert(container.size() == 6);
 		for (const auto& item : container)
 			ctpAssert(item == data[2]);
 
 		// Assign to full.
 		container.assign(10, data[3]);
-		
+
 		ctpAssert(container.size() == 10);
 		for (const auto& item : container)
 			ctpAssert(item == data[3]);
@@ -1222,7 +1288,7 @@ constexpr bool AssignTests(const std::array<DataT, DataSize>& data) {
 
 			// Realloc
 			container.assign(capacity + 1, data[6]);
-			ctpAssert(container.size() == capacity +  1);
+			ctpAssert(container.size() == capacity + 1);
 			for (const auto& item : container)
 				ctpAssert(item == data[6]);
 		}
@@ -1326,7 +1392,7 @@ constexpr bool AssignTests(const std::array<DataT, DataSize>& data) {
 		ctpAssert(container[0] == data[0]);
 	}
 
-	// Move-assign via range.
+	// Move-assign via range. Same as assign.
 	{
 		container_type container;
 		container_type range(5, data[0]);
@@ -1334,7 +1400,7 @@ constexpr bool AssignTests(const std::array<DataT, DataSize>& data) {
 		container.assign_range(std::move(range));
 
 		ctpAssert(container.size() == 5);
-		ctpAssert(range.empty());
+		ctpAssert(range.size() == 5);
 		ctpAssert(container[0] == data[0]);
 	}
 
@@ -1404,62 +1470,68 @@ constexpr auto RunBasicLargeTests1 = BasicLargeTests<large_constexpr>();
 using large_non_constexpr = ctp::small_storage::container<int, 2, std::allocator<int>, can_grow_non_constexpr_options>;
 constexpr auto RunBasicLargeTests2 = BasicLargeTests<large_non_constexpr>(); // Still constexpr friendly for trivial T.
 
+using large_constexpr_non_trivial =
+ctp::small_storage::container<std::string, 2, std::allocator<std::string>, can_grow_options>;
+constexpr auto RunBasicLargeTestsNonTrivial1 = BasicLargeTestsNonTrivial<large_constexpr_non_trivial>();
+
+using large_non_constexpr_non_trivial =
+ctp::small_storage::container<std::string, 2, std::allocator<std::string>, can_grow_non_constexpr_options>;
+constexpr auto RunBasicLargeTestsNontrivial2 = BasicLargeTestsNonTrivial<large_non_constexpr_non_trivial>();
+
 
 constexpr auto RunResizeTests =
-	ResizeTests<int, small_only_options>(IntData) &&
-	ResizeTests<int, can_grow_options>(IntData) &&
-	ResizeTests<std::string, small_only_options>(StringData) &&
-	ResizeTests<std::string, can_grow_options>(StringData) &&
-	ResizeTests<std::string, small_only_non_constexpr_options>(StringData) &&
-	ResizeTests<std::string, can_grow_non_constexpr_options>(StringData);
+ResizeTests<int, small_only_options>(IntData) &&
+ResizeTests<int, can_grow_options>(IntData) &&
+ResizeTests<std::string, small_only_options>(StringData) &&
+ResizeTests<std::string, can_grow_options>(StringData) &&
+ResizeTests<std::string, small_only_non_constexpr_options>(StringData) &&
+ResizeTests<std::string, can_grow_non_constexpr_options>(StringData);
 
 constexpr auto RunShrinkToFitTests =
-	ShrinkToFitTests<int, small_only_options>(IntData) &&
-	ShrinkToFitTests<int, can_grow_options>(IntData) &&
-	ShrinkToFitTests<std::string, small_only_options>(StringData) &&
-	ShrinkToFitTests<std::string, can_grow_options>(StringData) &&
-	ShrinkToFitTests<std::string, small_only_non_constexpr_options>(StringData) &&
-	ShrinkToFitTests<std::string, can_grow_non_constexpr_options>(StringData);
+ShrinkToFitTests<int, small_only_options>(IntData) &&
+ShrinkToFitTests<int, can_grow_options>(IntData) &&
+ShrinkToFitTests<std::string, small_only_options>(StringData) &&
+ShrinkToFitTests<std::string, can_grow_options>(StringData) &&
+ShrinkToFitTests<std::string, small_only_non_constexpr_options>(StringData) &&
+ShrinkToFitTests<std::string, can_grow_non_constexpr_options>(StringData);
 
 constexpr auto RunInsertTests =
-	InsertTests<int, small_only_options>(IntData) &&
-	InsertTests<int, can_grow_options>(IntData) &&
-	InsertTests<std::string, small_only_options>(StringData) &&
-	InsertTests<std::string, can_grow_options>(StringData) &&
-	InsertTests<std::string, small_only_non_constexpr_options>(StringData) &&
-	InsertTests<std::string, can_grow_non_constexpr_options>(StringData);
+InsertTests<int, small_only_options>(IntData) &&
+InsertTests<int, can_grow_options>(IntData) &&
+InsertTests<std::string, small_only_options>(StringData) &&
+InsertTests<std::string, can_grow_options>(StringData) &&
+InsertTests<std::string, small_only_non_constexpr_options>(StringData) &&
+InsertTests<std::string, can_grow_non_constexpr_options>(StringData);
 
 constexpr auto RunEmplaceTests =
-	EmplaceTests<small_only_options>() &&
-	EmplaceTests< can_grow_options>() &&
-	EmplaceTests<small_only_options>() &&
-	EmplaceTests<can_grow_options>() &&
-	EmplaceTests<small_only_non_constexpr_options>() &&
-	EmplaceTests<can_grow_non_constexpr_options>();
+EmplaceTests<small_only_options>() &&
+EmplaceTests<can_grow_options>() &&
+EmplaceTests<small_only_non_constexpr_options>() &&
+EmplaceTests<can_grow_non_constexpr_options>();
 
 constexpr auto RunEraseTests =
-	EraseTests<int, small_only_options>(IntData) &&
-	EraseTests<int, can_grow_options>(IntData) &&
-	EraseTests<std::string, small_only_options>(StringData) &&
-	EraseTests<std::string, can_grow_options>(StringData) &&
-	EraseTests<std::string, small_only_non_constexpr_options>(StringData) &&
-	EraseTests<std::string, can_grow_non_constexpr_options>(StringData);
+EraseTests<int, small_only_options>(IntData) &&
+EraseTests<int, can_grow_options>(IntData) &&
+EraseTests<std::string, small_only_options>(StringData) &&
+EraseTests<std::string, can_grow_options>(StringData) &&
+EraseTests<std::string, small_only_non_constexpr_options>(StringData) &&
+EraseTests<std::string, can_grow_non_constexpr_options>(StringData);
 
 constexpr auto RunAssignTests =
-	AssignTests<int, small_only_options>(IntData) &&
-	AssignTests<int, can_grow_options>(IntData) &&
-	AssignTests<std::string, small_only_options>(StringData) &&
-	AssignTests<std::string, can_grow_options>(StringData) &&
-	AssignTests<std::string, small_only_non_constexpr_options>(StringData) &&
-	AssignTests<std::string, can_grow_non_constexpr_options>(StringData);
+AssignTests<int, small_only_options>(IntData) &&
+AssignTests<int, can_grow_options>(IntData) &&
+AssignTests<std::string, small_only_options>(StringData) &&
+AssignTests<std::string, can_grow_options>(StringData) &&
+AssignTests<std::string, small_only_non_constexpr_options>(StringData) &&
+AssignTests<std::string, can_grow_non_constexpr_options>(StringData);
 
 constexpr auto RunCompareTests =
-	CompareTests<int, small_only_options>(IntData) &&
-	CompareTests<int, can_grow_options>(IntData) &&
-	CompareTests<std::string, small_only_options>(StringData) &&
-	CompareTests<std::string, can_grow_options>(StringData) &&
-	CompareTests<std::string, small_only_non_constexpr_options>(StringData) &&
-	CompareTests<std::string, can_grow_non_constexpr_options>(StringData);
+CompareTests<int, small_only_options>(IntData) &&
+CompareTests<int, can_grow_options>(IntData) &&
+CompareTests<std::string, small_only_options>(StringData) &&
+CompareTests<std::string, can_grow_options>(StringData) &&
+CompareTests<std::string, small_only_non_constexpr_options>(StringData) &&
+CompareTests<std::string, can_grow_non_constexpr_options>(StringData);
 
 } // namespace
 
@@ -1472,6 +1544,8 @@ TEST_CASE("Basic tests.", "[Tools][small_storage]") {
 
 	BasicLargeTests<large_constexpr>();
 	BasicLargeTests<large_non_constexpr>();
+	BasicLargeTestsNonTrivial<large_constexpr_non_trivial>();
+	BasicLargeTestsNonTrivial<large_non_constexpr_non_trivial>();
 
 	ResizeTests<int, small_only_options>(IntData);
 	ResizeTests<int, can_grow_options>(IntData);
@@ -1494,8 +1568,6 @@ TEST_CASE("Basic tests.", "[Tools][small_storage]") {
 	InsertTests<std::string, small_only_non_constexpr_options>(StringData);
 	InsertTests<std::string, can_grow_non_constexpr_options>(StringData);
 
-	EmplaceTests<small_only_options>();
-	EmplaceTests<can_grow_options>();
 	EmplaceTests<small_only_options>();
 	EmplaceTests<can_grow_options>();
 	EmplaceTests<small_only_non_constexpr_options>();
@@ -1523,16 +1595,52 @@ TEST_CASE("Basic tests.", "[Tools][small_storage]") {
 	CompareTests<std::string, can_grow_non_constexpr_options>(StringData);
 
 
+	// TODO
 	// for equality test, ensure I can both A <=> B and B <=> A with different small vector sizes.
 	// in case I am accidentally generating ambiguous templates
 
+	small_only_non_constexpr container;
+	container.push_back(0);
+	CHECK(container.at(0) == 0);
+	container.at(0) = 1;
+	CHECK(container.at(0) == 1);
+	CHECK(const_cast<const small_only_non_constexpr&>(container).at(0) == 1);
+
 #if CTP_USE_EXCEPTIONS
-	{
-		small_only_non_constexpr container;
-		container.push_back(0);
-		CHECK_NOTHROW(container.at(0));
-		CHECK_THROWS(container.at(1));
-		CHECK_THROWS(container.at(2));
-	}
+	CHECK_NOTHROW(container.at(0));
+	CHECK_THROWS(container.at(1));
+	CHECK_THROWS(container.at(2));
 #endif
+}
+
+TEST_CASE("Small container small size with non-default constructible type.", "[Tools][small_storage]") {
+	struct nondefault {
+		int i;
+		constexpr nondefault(int in) noexcept : i{in} {}
+	};
+
+	using container_type = ctp::small_storage::container<nondefault, 10, std::allocator<nondefault>, small_only_options>;
+
+	auto test = [] {
+		container_type container;
+
+		container.emplace_back(1);
+		container.emplace_back(2);
+		container.emplace_back(3);
+
+		// Test const_iterator to nonconst iterator conversion support for uninitialized_item_iterator.
+		container.emplace(container.begin(), 7);
+
+		CTP_CHECK(container.size() == 4);
+
+		CTP_CHECK(container[0].i == 7);
+		CTP_CHECK(container[1].i == 1);
+		CTP_CHECK(container[2].i == 2);
+		CTP_CHECK(container[3].i == 3);
+
+
+		return true;
+	};
+	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	test();
 }

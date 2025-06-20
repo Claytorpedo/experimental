@@ -3,6 +3,7 @@
   "name": "sandbox",
   "version": "0.0.1",
   "dependencies":[
-    "catch2"
+    "catch2",
+    "magic-enum"
   ]
 }
