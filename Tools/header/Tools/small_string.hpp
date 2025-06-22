@@ -3,18 +3,36 @@
 
 #include "small_storage.hpp"
 #include "trivial_allocator_adapter.hpp"
+#include "zstring_view.hpp"
 
 #include <string_view>
 
 namespace ctp {
 
+template <typename CharT, std::size_t NumChars, bool IsNullTerminated, class Traits, class Alloc, class Options>
+class basic_small_string;
+
 namespace small_string_detail {
+
+template <typename T>
+struct is_basic_small_string : std::false_type {};
+
+template <typename CharT, std::size_t N, bool Null, class Traits, class A, class O>
+struct is_basic_small_string<basic_small_string<CharT, N, Null, Traits, A, O>> : std::true_type {};
+
+template <typename T> inline constexpr bool is_basic_small_string_v = is_basic_small_string<T>::value;
+
+template <typename T>
+concept NotSmallString = !is_basic_small_string_v<T>;
 
 template <class S, typename CharT, typename Traits>
 concept StringViewConvertible = std::is_convertible_v<const S&, std::basic_string_view<CharT, Traits>>;
 
 template <class S, typename CharT, typename Traits>
 concept StringViewLikeNoPtr = StringViewConvertible<S, CharT, Traits> && !std::is_convertible_v<const S&, const CharT*>;
+
+template <class S, typename CharT, typename Traits>
+concept NonSmallStringViewConvertible = NotSmallString<S> && StringViewConvertible<S, CharT, Traits>;
 
 // Simple iterator that repeats one character.
 // peek returns a value rather than by pointer, so we set reference_type to CharT.
@@ -88,6 +106,7 @@ public:
 	static constexpr bool is_null_terminated = IsNullTerminated;
 
 	using view_type = std::basic_string_view<CharT, Traits>;
+	using zview_type = basic_zstring_view<CharT, Traits>;
 
 	constexpr ~basic_small_string() noexcept = default;
 
@@ -125,7 +144,7 @@ public:
 		const basic_small_string<CharT, S2, T2, Traits, A2, O2>& o,
 		size_type pos,
 		const Alloc& alloc = Alloc{}) noexcept(noexcept(Base(alloc)) && noexcept(Base::assign(o.begin(), o.end())))
-		requires (is_null_terminated && o.is_null_terminated)
+		requires (is_null_terminated&& o.is_null_terminated)
 	: Base(o.begin() + pos, o.end() + 1, alloc) {}
 
 	template <std::size_t S2, bool T2, class A2, class O2>
@@ -133,7 +152,7 @@ public:
 		const basic_small_string<CharT, S2, T2, Traits, A2, O2>& o,
 		size_type pos,
 		const Alloc& alloc = Alloc{}) noexcept(noexcept(Base(alloc)) && noexcept(Base::assign(o.begin(), o.end())))
-		requires (is_null_terminated && o.not_null_terminated)
+		requires (is_null_terminated&& o.not_null_terminated)
 	: Base(alloc) {
 		Base::reserve(o.size() - pos + 1);
 		Base::assign(o.begin() + pos, o.end());
@@ -148,7 +167,7 @@ public:
 		size_type pos,
 		size_type count,
 		const Alloc& alloc = Alloc{}) noexcept(noexcept(Base(alloc)) && noexcept(Base::assign(o.begin() + pos, o.end())))
-	: Base(alloc) {
+		: Base(alloc) {
 		size_type endPos = pos + count;
 		if (const size_type oSize = o.size(); count == npos || endPos > oSize)
 			endPos = oSize;
@@ -287,11 +306,11 @@ public:
 
 	constexpr basic_small_string(const basic_small_string& o)
 		noexcept(noexcept(Base(o)))
-	: Base(o) {}
+		: Base(o) {}
 
 	constexpr basic_small_string(const basic_small_string& o, const Alloc& alloc)
 		noexcept(noexcept(Base(o, alloc)))
-	: Base(o, alloc) {}
+		: Base(o, alloc) {}
 
 	template <std::size_t S2, bool T2, class A2, class O2>
 	constexpr basic_small_string(const basic_small_string<CharT, S2, T2, Traits, A2, O2>& o)
@@ -374,7 +393,7 @@ public:
 	}
 
 	template <small_string_detail::StringViewLikeNoPtr<CharT, Traits> ViewConvertible>
-	constexpr basic_small_string(const ViewConvertible& view, const Alloc& alloc = Alloc{})
+	explicit constexpr basic_small_string(const ViewConvertible& view, const Alloc& alloc = Alloc{})
 		noexcept(noexcept(Base(alloc)) && noexcept(Base::assign(view_type{}.begin(), view_type{}.end())))
 		: Base(alloc) {
 		view_type v{view};
@@ -401,9 +420,9 @@ public:
 
 	template <class Range>
 	constexpr basic_small_string(std::from_range_t, Range&& range, const Alloc& alloc = Alloc{})
-		noexcept(noexcept(Base(std::from_range_t{}, std::forward<Range>(range), alloc)))
+		noexcept(noexcept(Base(std::from_range, std::forward<Range>(range), alloc)))
 		requires not_null_terminated
-	: Base(std::from_range_t{}, std::forward<Range>(range), alloc) {}
+	: Base(std::from_range, std::forward<Range>(range), alloc) {}
 	template <class Range>
 	constexpr basic_small_string(std::from_range_t, Range&& range, const Alloc& alloc = Alloc{})
 		noexcept(noexcept(Base(alloc)) && noexcept(Base::assign_range(std::forward<Range>(range))))
@@ -569,9 +588,14 @@ public:
 	using Base::at;
 	using Base::operator[];
 	using Base::data;
-	constexpr const CharT* c_str() const noexcept requires is_null_terminated { return Base::data(); }
 	constexpr operator view_type() const noexcept { return view_type{Base::data(), size()}; }
 	constexpr view_type view() const noexcept { return view_type{Base::data(), size()}; }
+
+	constexpr const CharT* c_str() const noexcept requires is_null_terminated { return Base::data(); }
+	constexpr operator zview_type() const noexcept requires is_null_terminated { return zview(); }
+	constexpr zview_type zview() const noexcept requires is_null_terminated {
+		return zview_type{Base::data(), size()};
+	}
 
 	using Base::begin;
 	using Base::cbegin;
@@ -618,9 +642,13 @@ public:
 	}
 
 	constexpr reference push_back(CharT ch) noexcept(noexcept(Base::push_back(ch)))
-		requires not_null_terminated { return Base::push_back(ch); }
+		requires not_null_terminated {
+		return Base::push_back(ch);
+	}
 	constexpr reference push_back(CharT ch) noexcept(noexcept(Base::insert(end(), ch)))
-		requires is_null_terminated { return *Base::insert(end(), ch); }
+		requires is_null_terminated {
+		return *Base::insert(end(), ch);
+	}
 	constexpr void pop_back() noexcept { erase(end()); }
 
 	// ----- append -----
@@ -732,9 +760,9 @@ public:
 		do_replace(pos, count, repeater(ch, 0), repeater(ch, count2));
 		return *this;
 	}
-	constexpr basic_small_string& replace(const_iterator first, const_iterator last, size_type count2, CharT ch) {
+	constexpr basic_small_string& replace(const_iterator first, const_iterator last, size_type count, CharT ch) {
 		using repeater = small_string_detail::char_repeater<CharT>;
-		do_replace(first, last, repeater(ch, 0), repeater(ch, count2));
+		do_replace(first, last, repeater(ch, 0), repeater(ch, count));
 		return *this;
 	}
 	template <std::input_iterator Iter>
@@ -779,7 +807,7 @@ public:
 	}
 
 	// ----- find -----
-	
+
 	constexpr size_type find(CharT ch, size_type pos = 0) const noexcept { return view().find(ch, pos); }
 	constexpr size_type find(view_type view, size_type pos = 0) const noexcept { return view().find(view, pos); }
 
@@ -825,7 +853,7 @@ public:
 	}
 
 	// ----- starts_with / ends_with / contains -----
-	
+
 	constexpr bool starts_with(view_type view) const noexcept { return view().starts_with(view); }
 	constexpr bool starts_with(CharT ch) const noexcept { return view().starts_with(ch); }
 	constexpr bool starts_with(const CharT* str) const noexcept { return view().starts_with(str); }
@@ -843,26 +871,30 @@ public:
 	constexpr basic_small_string substr(size_type pos = 0, size_type count = npos) const& {
 		return basic_small_string(*this, pos, count);
 	}
-	constexpr basic_small_string substr(size_type pos = 0, size_type count = npos) && {
+	constexpr basic_small_string substr(size_type pos = 0, size_type count = npos)&& {
 		return basic_small_string(std::move(*this), pos, count);
 	}
 
 	// ----- equality -----
 
-	friend constexpr bool operator==(const basic_small_string& lhs, const view_type rhs) noexcept {
-		return lhs.view() == rhs;
+	template <small_string_detail::NonSmallStringViewConvertible<CharT, Traits> ViewConvertible>
+	friend constexpr bool operator==(const basic_small_string& lhs, const ViewConvertible& rhs) noexcept {
+		return lhs.view() == view_type{rhs};
 	}
-	friend constexpr bool operator==(const view_type lhs, const basic_small_string& rhs) noexcept {
-		return lhs == rhs.view();
+	template <small_string_detail::NonSmallStringViewConvertible<CharT, Traits> ViewConvertible>
+	friend constexpr bool operator==(const ViewConvertible& lhs, const basic_small_string& rhs) noexcept {
+		return view_type{lhs} == rhs.view();
 	}
 
-	friend constexpr compare_three_way_type_t<CharT> operator<=>(const basic_small_string& lhs, const view_type rhs)
+	template <small_string_detail::NonSmallStringViewConvertible<CharT, Traits> ViewConvertible>
+	friend constexpr compare_three_way_type_t<CharT> operator<=>(const basic_small_string& lhs, const ViewConvertible& rhs)
 		noexcept {
-		return lhs.view() <=> rhs;
+		return lhs.view() <=> view_type{rhs};
 	}
-	friend constexpr compare_three_way_type_t<CharT> operator<=>(const view_type lhs, const basic_small_string& rhs)
+	template <small_string_detail::NonSmallStringViewConvertible<CharT, Traits> ViewConvertible>
+	friend constexpr compare_three_way_type_t<CharT> operator<=>(const ViewConvertible& lhs, const basic_small_string& rhs)
 		noexcept {
-		return lhs <=> rhs.view();
+		return view_type{lhs} <=> rhs.view();
 	}
 
 	friend constexpr bool operator==(const basic_small_string& lhs, const CharT* rhs) noexcept {
@@ -908,7 +940,7 @@ using make_basic_t = typename make_basic<CharT, SmallModeChars, IsNullTerminated
 
 struct fixed_string_options : small_storage::default_options {
 	static constexpr bool has_large_mode = false;
-	static constexpr bool constexpr_friendly = true;
+	static constexpr bool force_constexpr_friendliness = true;
 };
 
 // A statically sized string with local storage for NumChars. Not null terminated.
@@ -927,7 +959,7 @@ using fixed_zstring = small_string_detail::make_basic_t<char, NumChars, true, Al
 
 struct small_string_options : small_storage::default_options {
 	static constexpr bool has_large_mode = true;
-	static constexpr bool constexpr_friendly = true;
+	static constexpr bool force_constexpr_friendliness = true;
 };
 
 // A string with enough local storage for at least NumItemsInSmallMode. Not null terminated.

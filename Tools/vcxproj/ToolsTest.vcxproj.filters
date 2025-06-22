@@ -32,5 +32,6 @@
     <ClCompile Include="$(Test)uninitialized_storage_iterator_test.cpp" Filter="Src" />
     <ClCompile Include="$(Test)uninitialized_storage_test.cpp" Filter="Src" />
     <ClCompile Include="$(Test)VectorizerTest.cpp" Filter="Src" />
+    <ClCompile Include="$(Test)zstring_view_test.cpp" Filter="Src" />
   </ItemGroup>
 </Project>

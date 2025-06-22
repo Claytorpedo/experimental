@@ -31,6 +31,7 @@
     <ClCompile Include="$(Test)uninitialized_storage_iterator_test.cpp" />
     <ClCompile Include="$(Test)uninitialized_storage_test.cpp" />
     <ClCompile Include="$(Test)VectorizerTest.cpp" />
+    <ClCompile Include="$(Test)zstring_view_test.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

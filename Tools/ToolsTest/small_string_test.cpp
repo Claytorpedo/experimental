@@ -17,7 +17,7 @@ using namespace std::literals;
 TEST_CASE("fixed_string basic tests", "[Tools][fixed_string]") {
 	auto test = [] {
 		constexpr std::string_view expected = "hello world";
-		fixed_string<11> str = expected;
+		fixed_string<11> str{expected};
 
 		CTP_CHECK(str.size() == expected.size());
 		CTP_CHECK(str.length() == expected.size());
@@ -78,7 +78,7 @@ TEST_CASE("fixed_string constructors", "[Tools][fixed_string]") {
 
 	auto substr_construct = [] {
 		constexpr std::string_view expected = "helloworld";
-		fixed_string<10> str1 = expected;
+		fixed_string<10> str1{expected};
 
 		fixed_string<10> str2(str1, 0);
 		fixed_string<10> str3(str1, 5);
@@ -88,7 +88,7 @@ TEST_CASE("fixed_string constructors", "[Tools][fixed_string]") {
 		CTP_CHECK(str2 == expected);
 		CTP_CHECK(str3 == "world");
 
-		fixed_zstring<10> zstr1 = expected;
+		fixed_zstring<10> zstr1{expected};
 		fixed_zstring<10> zstr2(zstr1, 0);
 		fixed_zstring<10> zstr3(zstr1, 5);
 
@@ -125,7 +125,7 @@ TEST_CASE("fixed_string constructors", "[Tools][fixed_string]") {
 
 	auto substr_count_construct = [] {
 		constexpr std::string_view expected = "helloworld";
-		fixed_string<10> str1 = expected;
+		fixed_string<10> str1{expected};
 
 		fixed_string<10> str2(str1, 0, 2);
 		fixed_string<10> str3(str1, 5, 5);
@@ -138,7 +138,7 @@ TEST_CASE("fixed_string constructors", "[Tools][fixed_string]") {
 		CTP_CHECK(str3 == "world");
 		CTP_CHECK(str4 == "world");
 
-		fixed_zstring<10> zstr1 = expected;
+		fixed_zstring<10> zstr1{expected};
 		fixed_zstring<10> zstr2(zstr1, 0, fixed_zstring<10>::npos);
 		fixed_zstring<10> zstr3(zstr1, 5, 0);
 
@@ -175,7 +175,7 @@ TEST_CASE("fixed_string constructors", "[Tools][fixed_string]") {
 
 	auto move_substr_construct = [] {
 		constexpr std::string_view expected = "helloworld";
-		fixed_string<10> str1 = expected;
+		fixed_string<10> str1{expected};
 
 		fixed_string<10> str2(std::move(str1), 0);
 		CTP_CHECK(str1.empty());
@@ -188,7 +188,7 @@ TEST_CASE("fixed_string constructors", "[Tools][fixed_string]") {
 		CTP_CHECK(str2 == expected);
 		CTP_CHECK(str3 == "world");
 
-		fixed_zstring<10> zstr1 = expected;
+		fixed_zstring<10> zstr1{expected};
 		fixed_zstring<10> zstr2(std::move(zstr1), 0);
 		CTP_CHECK(zstr1.empty());
 		CHECK_NULL_TERMINATED(zstr1);
@@ -233,7 +233,7 @@ TEST_CASE("fixed_string constructors", "[Tools][fixed_string]") {
 
 	auto move_substr_count_construct = [] {
 		constexpr std::string_view expected = "helloworld";
-		fixed_string<10> str1 = expected;
+		fixed_string<10> str1{expected};
 
 		fixed_string<10> str2(std::move(str1), 0, 2);
 		CTP_CHECK(str1.empty());
@@ -249,7 +249,7 @@ TEST_CASE("fixed_string constructors", "[Tools][fixed_string]") {
 		CTP_CHECK(str3 == "world");
 		CTP_CHECK(str4 == "world");
 
-		fixed_zstring<10> zstr1 = expected;
+		fixed_zstring<10> zstr1{expected};
 		fixed_zstring<10> zstr2(std::move(zstr1), 0, fixed_zstring<10>::npos);
 		CTP_CHECK(zstr1.empty());
 		CHECK_NULL_TERMINATED(zstr1);
@@ -293,7 +293,7 @@ TEST_CASE("fixed_string constructors", "[Tools][fixed_string]") {
 
 	auto cstr_construct = [] {
 		constexpr const char* expected = "helloworld";
-		const fixed_string<10> str1 = expected;
+		const fixed_string<10> str1{expected};
 		const fixed_string<10> str2(expected, 0);
 		const fixed_string<10> str3(expected, 6);
 		const fixed_string<10> str4(expected);
@@ -307,7 +307,7 @@ TEST_CASE("fixed_string constructors", "[Tools][fixed_string]") {
 		CTP_CHECK(str3 == "hellow");
 		CTP_CHECK(str4 == expected);
 
-		const fixed_zstring<10> zstr1 = expected;
+		const fixed_zstring<10> zstr1{expected};
 		const fixed_zstring<10> zstr2(expected, 0);
 		const fixed_zstring<10> zstr3(expected, 4);
 		const fixed_zstring<10> zstr4(expected);
@@ -333,7 +333,7 @@ TEST_CASE("fixed_string constructors", "[Tools][fixed_string]") {
 
 	auto iterator_construct = [] {
 		constexpr const char* expected = "helloworld";
-		const fixed_string<10> str = expected;
+		const fixed_string<10> str{expected};
 
 		const fixed_string<10> empty(str.begin(), str.begin());
 		CTP_CHECK(empty.size() == 0);
@@ -344,7 +344,7 @@ TEST_CASE("fixed_string constructors", "[Tools][fixed_string]") {
 		const fixed_string<10> substr(str.begin() + 1, str.last());
 		CTP_CHECK(substr == "elloworl");
 
-		const fixed_zstring<10> zstr = expected;
+		const fixed_zstring<10> zstr{expected};
 
 		const fixed_zstring<10> zempty(zstr.begin(), zstr.begin());
 		CTP_CHECK(zempty.size() == 0);
@@ -384,13 +384,13 @@ TEST_CASE("fixed_string constructors", "[Tools][fixed_string]") {
 
 	auto copy_construct = [] {
 		constexpr std::string_view expected = "helloworld";
-		const fixed_string<10> str = expected;
+		const fixed_string<10> str{expected};
 
 		const fixed_string<10> copy(str);
 
 		CTP_CHECK(copy == expected);
 
-		const fixed_zstring<10> zstr = expected;
+		const fixed_zstring<10> zstr{expected};
 		const fixed_zstring<10> zcopy(zstr);
 		CTP_CHECK(zcopy == expected);
 		CHECK_NULL_TERMINATED(zcopy);
@@ -409,14 +409,14 @@ TEST_CASE("fixed_string constructors", "[Tools][fixed_string]") {
 
 	auto move_construct = [] {
 		constexpr std::string_view expected = "helloworld";
-		fixed_string<10> str = expected;
+		fixed_string<10> str{expected};
 
 		const fixed_string<10> moved(std::move(str));
 
 		CTP_CHECK(moved == expected);
 		CTP_CHECK(str.is_empty());
 
-		fixed_zstring<10> zstr = expected;
+		fixed_zstring<10> zstr{expected};
 		const fixed_zstring<10> zmoved(std::move(zstr));
 		CTP_CHECK(zmoved == expected);
 		CHECK_NULL_TERMINATED(zmoved);
@@ -477,10 +477,10 @@ TEST_CASE("fixed_string constructors", "[Tools][fixed_string]") {
 
 	auto range_construct = [] {
 		std::vector<char> vec{'h','e','l','l','o','w','o','r','l','d'};
-		const fixed_string<10> str(std::from_range_t{}, vec);
+		const fixed_string<10> str(std::from_range, vec);
 		CTP_CHECK(str == "helloworld"sv);
-		
-		const fixed_zstring<10> zstr(std::from_range_t{}, vec);
+
+		const fixed_zstring<10> zstr(std::from_range, vec);
 		CTP_CHECK(zstr == "helloworld"sv);
 		CHECK_NULL_TERMINATED(zstr);
 
@@ -490,10 +490,10 @@ TEST_CASE("fixed_string constructors", "[Tools][fixed_string]") {
 	range_construct();
 }
 
-TEST_CASE("fixed_string operator=", "[Tools][fixed_string]") {
+TEST_CASE("fixed_string {expected}", "[Tools][fixed_string]") {
 	const auto copy_assign = [] {
 		constexpr std::string_view expected = "helloworld";
-		const fixed_string<10> str = expected;
+		const fixed_string<10> str{expected};
 
 		fixed_string<10> copy;
 		copy = str;
@@ -503,7 +503,7 @@ TEST_CASE("fixed_string operator=", "[Tools][fixed_string]") {
 		copy = str;
 		CTP_CHECK(copy == expected);
 
-		const fixed_zstring<10> zstr = expected;
+		const fixed_zstring<10> zstr{expected};
 		fixed_zstring<10> zcopy;
 		zcopy = zstr;
 		CTP_CHECK(zcopy == expected);
@@ -536,7 +536,7 @@ TEST_CASE("fixed_string operator=", "[Tools][fixed_string]") {
 
 	const auto move_assign = [] {
 		constexpr std::string_view expected = "helloworld";
-		fixed_string<10> str = expected;
+		fixed_string<10> str{expected};
 
 		fixed_string<10> moved;
 		moved = std::move(str);
@@ -549,7 +549,7 @@ TEST_CASE("fixed_string operator=", "[Tools][fixed_string]") {
 		CTP_CHECK(moved == expected);
 		CTP_CHECK(str.is_empty());
 
-		fixed_zstring<10> zstr = expected;
+		fixed_zstring<10> zstr{expected};
 		fixed_zstring<10> zmoved;
 		zmoved = std::move(zstr);
 		CTP_CHECK(zmoved == expected);
@@ -692,7 +692,7 @@ TEST_CASE("fixed_string assign", "[Tools][fixed_string]") {
 		const std::string_view expected1 = "helloworld";
 		const std::string_view expected2 = "somestuff";
 		{
-			fixed_string<10> str = expected1;
+			fixed_string<10> str{expected1};
 			fixed_string<10> copy;
 			copy.assign(std::move(str));
 			CTP_CHECK(copy == expected1);
@@ -705,7 +705,7 @@ TEST_CASE("fixed_string assign", "[Tools][fixed_string]") {
 			CTP_CHECK(copy.empty());
 		}
 		{
-			fixed_zstring<10> zstr = expected1;
+			fixed_zstring<10> zstr{expected1};
 			fixed_zstring<10> zcopy;
 			zcopy.assign(std::move(zstr));
 			CTP_CHECK(zcopy == expected1);
@@ -790,7 +790,7 @@ TEST_CASE("fixed_string assign", "[Tools][fixed_string]") {
 
 	const auto iterator_assign = [] {
 		constexpr const char* expected = "helloworld";
-		const fixed_string<10> str = expected;
+		const fixed_string<10> str{expected};
 
 		fixed_string<10> test;
 		test.assign(str.begin(), str.begin());
@@ -802,7 +802,7 @@ TEST_CASE("fixed_string assign", "[Tools][fixed_string]") {
 		test.assign(str.begin() + 1, str.last());
 		CTP_CHECK(test == "elloworl");
 
-		const fixed_zstring<10> zstr = expected;
+		const fixed_zstring<10> zstr{expected};
 
 		fixed_zstring<10> ztest(zstr.begin(), zstr.begin());
 		CTP_CHECK(ztest.size() == 0);
@@ -933,7 +933,7 @@ TEST_CASE("fixed_string clear", "[Tools][fixed_string]") {
 }
 
 TEST_CASE("fixed_string c_str", "[Tools][fixed_string]") {
-	static const auto streql = [] (const char* lhs, const char* rhs) {
+	static const auto streql = [](const char* lhs, const char* rhs) {
 		constexpr std::size_t Max = 12;
 
 		for (std::size_t i = 0; i < Max; ++i) {
@@ -1059,13 +1059,13 @@ TEST_CASE("fixed_string append / operator+=", "[Tools][fixed_string]") {
 		{
 			fixed_string<10> str;
 			str.append({'h','e','l','l','o'});
-			str += {'w','o','r','l','d'};
+			str += {'w', 'o', 'r', 'l', 'd'};
 			CTP_CHECK(str == "helloworld"sv);
 		}
 		{
 			fixed_zstring<10> zstr;
 			zstr.append({'h','e','l','l','o'});
-			zstr += {'w','o','r','l','d'};
+			zstr += {'w', 'o', 'r', 'l', 'd'};
 			CTP_CHECK(zstr == "helloworld"sv);
 			CHECK_NULL_TERMINATED(zstr);
 		}
@@ -1551,7 +1551,7 @@ TEST_CASE("fixed_string substr", "[Tools][fixed_string]") {
 	const auto move_stubstr = [] {
 		const std::string_view expected = "helloworld";
 		{
-			fixed_string<10> str = expected;
+			fixed_string<10> str{expected};
 			CTP_CHECK(std::move(str).substr(0) == "helloworld"sv);
 			CTP_CHECK(str.empty());
 			str = expected;
@@ -1568,7 +1568,7 @@ TEST_CASE("fixed_string substr", "[Tools][fixed_string]") {
 			CTP_CHECK(str.empty());
 		}
 		{
-			fixed_zstring<10> zstr = expected;
+			fixed_zstring<10> zstr{expected};
 			CTP_CHECK(std::move(zstr).substr(0) == "helloworld"sv);
 			CTP_CHECK(zstr.empty());
 			CHECK_NULL_TERMINATED(zstr);
@@ -1601,10 +1601,17 @@ TEST_CASE("fixed_string operator==, operator<=>", "[Tools][fixed_string]") {
 		const fixed_string<10> str2 = "somestuff";
 
 		CTP_CHECK(str1 == str1);
-		CTP_CHECK(str1 == "helloworld"sv);
 		CTP_CHECK_FALSE(str1 == "elloworld");
+		CTP_CHECK(str1 == "helloworld");
 		CTP_CHECK(str1 == "helloworld"sv);
+		CTP_CHECK(str1 == "helloworld"_zv);
 		CTP_CHECK(str1 == "helloworld"s);
+		CTP_CHECK_FALSE("elloworld" == str1);
+		CTP_CHECK("helloworld" == str1);
+		CTP_CHECK("helloworld"sv == str1);
+		CTP_CHECK("helloworld"_zv == str1);
+		CTP_CHECK("helloworld"s == str1);
+		CTP_CHECK_FALSE(str1 == str2);
 		CTP_CHECK(str1 != str2);
 
 		const fixed_zstring<10> zstr1 = "helloworld";
@@ -1711,7 +1718,7 @@ TEST_CASE("fixed_string operator>>, operator<<, getline", "[Tools][fixed_string]
 TEST_CASE("small_string general", "[Tools][small_string]") {
 	const auto test = [] {
 		small_string<10> small = "helloworld";
-		
+
 		{
 			const fixed_string<10> copy = small;
 			CTP_CHECK(copy == "helloworld"sv);
@@ -1746,5 +1753,22 @@ TEST_CASE("small_string general", "[Tools][small_string]") {
 	[[maybe_unused]] constexpr bool RunTestConstexpr = test();
 	test();
 }
+
+TEST_CASE("small_string views", "[Tools][small_string]") {
+	const auto test = [] {
+		const small_string<10> small = "helloworld";
+		small_zstring<10> zsmall{"helloworld"_zv};
+
+		CTP_CHECK(small.view() == "helloworld"sv);
+		CTP_CHECK(small.view() == "helloworld"_zv);
+		CTP_CHECK(zsmall.view() == "helloworld"sv);
+		CTP_CHECK(zsmall.zview() == "helloworld"_zv);
+
+		return true;
+	};
+	[[maybe_unused]] constexpr bool RunTestConstexpr = test();
+	test();
+}
+
 
 #undef CHECK_NULL_TERMINATED

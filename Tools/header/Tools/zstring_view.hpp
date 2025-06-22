@@ -5,6 +5,7 @@
 #include "debug.hpp"
 
 #include <string_view>
+#include <string>
 
 #if CTP_USE_EXCEPTIONS
 #include <stdexcept>
@@ -59,6 +60,7 @@ public:
 	// User provides guarantee that string is null terminated.
 	// This is intentionally unergonomic.
 	struct null_terminated_tag {};
+	static constexpr null_terminated_tag null_terminated;
 	constexpr basic_zstring_view(null_terminated_tag, const_pointer str, size_type len) noexcept
 		: impl{str, len}
 	{
@@ -73,6 +75,11 @@ public:
 			ctpExpects(str.empty()); // malformed string_view?
 			impl = impl_type{EmptyPtr(), 0};
 		}
+	}
+
+	constexpr basic_zstring_view(const std::basic_string<CharT, Traits>& str) noexcept : impl{str} {
+		if (str.empty())
+			impl_type{EmptyPtr(), 0};
 	}
 
 	basic_zstring_view(std::nullptr_t) = delete;
@@ -90,10 +97,16 @@ public:
 	constexpr const_reverse_iterator crbegin() const noexcept { return impl.crbegin(); };
 	constexpr const_reverse_iterator crend() const noexcept { return impl.crend(); };
 
+	// Get iterator to the last element.
+	constexpr iterator last() noexcept { return impl.begin() + (impl.size() - 1); }
+	// Get iterator to the last element.
+	constexpr const_iterator last() const noexcept { return impl.begin() + (impl.size() - 1); }
+
 	constexpr size_type size() const noexcept { return impl.size(); };
 	constexpr size_type length() const noexcept { return impl.length(); };
 	constexpr size_type max_size() const noexcept { return impl.max_size(); };
 	[[nodiscard]] constexpr bool empty() const noexcept { return impl.empty(); };
+	constexpr bool is_empty() const noexcept { return impl.empty(); };
 
 	constexpr const_reference operator[](size_type pos) const { return impl[pos]; }
 	constexpr const_reference at(size_type pos) const { return impl.at(pos); }
@@ -107,7 +120,7 @@ public:
 	constexpr void remove_prefix(size_type n) { impl.remove_prefix(n); }
 	constexpr void remove_suffix(size_type n) =
 #ifdef __cpp_deleted_function
-		delete("Cannot remove_suffix in-place on zstring_view while retaining null terminator. Use substr instead.");
+		delete("Cannot remove_suffix in-place on zstring_view while retaining null terminator.");
 #else
 		delete;
 #endif
@@ -118,10 +131,6 @@ public:
 
 	constexpr basic_zstring_view substr(size_type pos) const {
 		return impl.substr(pos);
-	}
-
-	constexpr impl_type substr(size_type pos, size_type n) const {
-		return impl.substr(pos, n);
 	}
 
 	constexpr int compare(impl_type o) const noexcept { return impl.compare(o); }
@@ -241,23 +250,23 @@ inline namespace literals {
 inline namespace zstring_view_literals {
 
 constexpr zstring_view operator""_zv(const char* str, std::size_t len) noexcept {
-	return zstring_view(zstring_view::null_terminated_tag{}, str, len);
+	return zstring_view(zstring_view::null_terminated, str, len);
 }
 
 constexpr wzstring_view operator""_zv(const wchar_t* str, std::size_t len) noexcept {
-	return wzstring_view(wzstring_view::null_terminated_tag{}, str, len);
+	return wzstring_view(wzstring_view::null_terminated, str, len);
 }
 
 constexpr u8zstring_view operator""_zv(const char8_t* str, std::size_t len) noexcept {
-	return u8zstring_view(u8zstring_view::null_terminated_tag{}, str, len);
+	return u8zstring_view(u8zstring_view::null_terminated, str, len);
 }
 
 constexpr u16zstring_view operator""_zv(const char16_t* str, std::size_t len) noexcept {
-	return u16zstring_view(u16zstring_view::null_terminated_tag{}, str, len);
+	return u16zstring_view(u16zstring_view::null_terminated, str, len);
 }
 
 constexpr u32zstring_view operator""_zv(const char32_t* str, std::size_t len) noexcept {
-	return u32zstring_view(u32zstring_view::null_terminated_tag{}, str, len);
+	return u32zstring_view(u32zstring_view::null_terminated, str, len);
 }
 } // zstring_view_literals
 } // literals

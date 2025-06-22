@@ -1594,11 +1594,6 @@ TEST_CASE("Basic tests.", "[Tools][small_storage]") {
 	CompareTests<std::string, small_only_non_constexpr_options>(StringData);
 	CompareTests<std::string, can_grow_non_constexpr_options>(StringData);
 
-
-	// TODO
-	// for equality test, ensure I can both A <=> B and B <=> A with different small vector sizes.
-	// in case I am accidentally generating ambiguous templates
-
 	small_only_non_constexpr container;
 	container.push_back(0);
 	CHECK(container.at(0) == 0);
@@ -1638,6 +1633,57 @@ TEST_CASE("Small container small size with non-default constructible type.", "[T
 		CTP_CHECK(container[2].i == 2);
 		CTP_CHECK(container[3].i == 3);
 
+
+		return true;
+	};
+	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	test();
+}
+
+TEST_CASE("Small container compare with different small sizes.", "[Tools][small_storage]") {
+	using a_type = ctp::small_storage::container<char, 5, std::allocator<char>, can_grow_options>;
+	using b_type = ctp::small_storage::container<char, 10, std::allocator<char>, small_only_options>;
+
+	auto test = [] {
+		a_type a;
+		b_type b;
+
+		CTP_CHECK(a == b);
+		CTP_CHECK(b == a);
+		CTP_CHECK_FALSE(a < b);
+		CTP_CHECK_FALSE(a > b);
+		CTP_CHECK_FALSE(b < a);
+		CTP_CHECK_FALSE(b > a);
+
+		a.assign_range("fitss"sv);
+		b.assign_range("fitss"sv);
+
+		CTP_CHECK(a == b);
+		CTP_CHECK(b == a);
+		CTP_CHECK_FALSE(a < b);
+		CTP_CHECK_FALSE(a > b);
+		CTP_CHECK_FALSE(b < a);
+		CTP_CHECK_FALSE(b > a);
+
+		// b longer
+		b.assign_range("fitsss"sv);
+
+		CTP_CHECK_FALSE(a == b);
+		CTP_CHECK_FALSE(b == a);
+		CTP_CHECK(a < b);
+		CTP_CHECK_FALSE(a > b);
+		CTP_CHECK_FALSE(b < a);
+		CTP_CHECK(b > a);
+
+		a.assign_range("biggerthansmallbutequal"sv);
+		b.assign_range("biggerthan"sv); // max size
+
+		CTP_CHECK_FALSE(a == b);
+		CTP_CHECK_FALSE(b == a);
+		CTP_CHECK_FALSE(a < b);
+		CTP_CHECK(a > b);
+		CTP_CHECK(b < a);
+		CTP_CHECK_FALSE(b > a);
 
 		return true;
 	};
