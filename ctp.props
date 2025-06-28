@@ -114,6 +114,7 @@
       <AdditionalOptions>/we4668 %(AdditionalOptions)</AdditionalOptions> <!-- Warn when using undefined macro. -->
       <!-- Don't warn for uninitialized members. (False positives and can't disable for every use of a struct.) -->
       <AdditionalOptions>/wd26495 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions> <!-- Unicode support, needed for fmt. -->
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>

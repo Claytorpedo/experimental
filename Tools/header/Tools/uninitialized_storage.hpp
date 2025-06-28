@@ -106,6 +106,9 @@ using const_uninitialized_item_iterator = detail::uninitialized_item_iterator_t<
 
 namespace uninit {
 
+struct uninitialized_tag {};
+inline constexpr uninitialized_tag uninitialized{};
+
 // Wrap a pointer in a class for a strongly-typed iterator.
 // We need it for the provided value_type in the helper functions below.
 template <typename T>
@@ -139,18 +142,18 @@ struct default_iterator_selector<T, false> {
 // Helper functions for uninit::array.
 
 template <typename Alloc, typename Iterator, typename... Args>
-constexpr void do_construct_at(Alloc& alloc, Iterator iterator, Args&&... args)
+constexpr auto& do_construct_at(Alloc& alloc, Iterator iterator, Args&&... args)
 CTP_NOEXCEPT(noexcept(std::is_nothrow_constructible_v<typename Iterator::value_type, Args&&...>))
 {
 	if CTP_IS_CONSTEVAL {
 		if constexpr (is_instantiation_of_v<ptr_iterator_t, Iterator>) {
 			// array_wrapper case, where values are already default-constructed.
-			*iterator = std::make_obj_using_allocator<typename Iterator::value_type>(alloc, std::forward<Args>(args)...);
+			return *iterator = std::make_obj_using_allocator<typename Iterator::value_type>(alloc, std::forward<Args>(args)...);
 		} else {
-			std::uninitialized_construct_using_allocator(iterator.get(), alloc, std::forward<Args>(args)...);
+			return *std::uninitialized_construct_using_allocator(iterator.get(), alloc, std::forward<Args>(args)...);
 		}
 	} else {
-		std::uninitialized_construct_using_allocator(iterator.get(), alloc, std::forward<Args>(args)...);
+		return *std::uninitialized_construct_using_allocator(iterator.get(), alloc, std::forward<Args>(args)...);
 	}
 }
 

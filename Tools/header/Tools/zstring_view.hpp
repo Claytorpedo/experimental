@@ -120,7 +120,7 @@ public:
 	constexpr void remove_prefix(size_type n) { impl.remove_prefix(n); }
 	constexpr void remove_suffix(size_type n) =
 #ifdef __cpp_deleted_function
-		delete("Cannot remove_suffix in-place on zstring_view while retaining null terminator.");
+		delete("Cannot remove_suffix in-place on zstring_view while retaining null terminator. Use substr instead.");
 #else
 		delete;
 #endif
@@ -131,6 +131,10 @@ public:
 
 	constexpr basic_zstring_view substr(size_type pos) const {
 		return impl.substr(pos);
+	}
+
+	constexpr impl_type substr(size_type pos, size_type n) const {
+		return impl.substr(pos, n);
 	}
 
 	constexpr int compare(impl_type o) const noexcept { return impl.compare(o); }

@@ -70,19 +70,19 @@ public:
 	using allocator_type = Allocator;
 
 	constexpr array()
-		CTP_NOEXCEPT(std::is_nothrow_default_constructible_v<Allocator> && std::is_nothrow_default_constructible_v<T>)
+		CTP_NOEXCEPT(std::is_nothrow_default_constructible_v<Allocator>&& std::is_nothrow_default_constructible_v<T>)
 		requires (std::is_default_constructible_v<T>)
 	{
 		uninit::construct_n(alloc_, begin(), N);
 	}
 	constexpr array(const Allocator& alloc)
-		CTP_NOEXCEPT(std::is_nothrow_copy_constructible_v<Allocator> && std::is_nothrow_default_constructible_v<T>)
+		CTP_NOEXCEPT(std::is_nothrow_copy_constructible_v<Allocator>&& std::is_nothrow_default_constructible_v<T>)
 		requires (std::is_default_constructible_v<T>)
-		: alloc_{alloc} {
+	: alloc_{alloc} {
 		uninit::construct_n(alloc_, begin(), N);
 	}
 	constexpr array(const T& value, const Allocator& alloc = Allocator{})
-		CTP_NOEXCEPT(std::is_nothrow_copy_constructible_v<Allocator> && std::is_nothrow_copy_constructible_v<T>)
+		CTP_NOEXCEPT(std::is_nothrow_copy_constructible_v<Allocator>&& std::is_nothrow_copy_constructible_v<T>)
 		: alloc_{alloc} {
 		uninit::construct_n(alloc_, begin(), N, value);
 	}
@@ -96,7 +96,7 @@ public:
 		: array{dispatch_to_template_tag{}, o} {}
 	template <typename A2>
 	constexpr array(const array<T, N, A2>& o, const Allocator& alloc)
-		CTP_NOEXCEPT(std::is_nothrow_copy_constructible_v<Allocator> && std::is_nothrow_constructible_v<T>);
+		CTP_NOEXCEPT(std::is_nothrow_copy_constructible_v<Allocator>&& std::is_nothrow_constructible_v<T>);
 
 	template <typename A2>
 	constexpr array(array<T, N, A2>&& o)
@@ -148,6 +148,20 @@ public:
 		: alloc_{alloc} {
 		std::size_t i = 0;
 		(uninit::do_construct_at(alloc_, storage_.get(i++), std::forward<Ts>(values)), ...);
+	}
+
+	// If you use this, to not be UB you must use construct_at to construct all indices
+	// before destruction takes place.
+	constexpr array(uninit::uninitialized_tag, const Allocator& alloc = Allocator{})
+		CTP_NOEXCEPT(std::is_nothrow_copy_constructible_v<Allocator>)
+		: alloc_{alloc} {}
+
+	// Used to construct values if array was constructed via uninitialized_tag.
+	template <typename... Args>
+	constexpr T& construct_at(std::size_t index, Args&&... args)
+		CTP_NOEXCEPT(noexcept(uninit::do_construct_at(alloc_, std::declval<iterator>(), std::forward<Args>(args)...)))
+	{
+		return uninit::do_construct_at(alloc_, storage_.get(index), std::forward<Args>(args)...);
 	}
 
 	template <class A2>
@@ -222,7 +236,7 @@ template <typename T, std::size_t N, typename Allocator>
 template <typename A2>
 constexpr array<T, N, Allocator>::
 array(const array<T, N, A2>& o, const Allocator& alloc)
-	CTP_NOEXCEPT(std::is_nothrow_copy_constructible_v<Allocator>&& std::is_nothrow_constructible_v<T>)
+CTP_NOEXCEPT(std::is_nothrow_copy_constructible_v<Allocator>&& std::is_nothrow_constructible_v<T>)
 	: alloc_{alloc}
 {
 	for (size_type i = 0; i < N; ++i)

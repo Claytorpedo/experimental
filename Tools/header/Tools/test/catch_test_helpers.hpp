@@ -37,4 +37,10 @@
   CTP_WARNING_POP \
 } while(0)
 
+#ifndef DISABLE_CONSTEXPR_TESTS
+#define TEST_CONSTEXPR [[maybe_unused]] static constexpr
+#else
+#define TEST_CONSTEXPR [[maybe_unused]]
+#endif
+
 #endif //INCLUDE_CTP_TOOLS_TEST_CATCH_TEST_HELPERS_HPP

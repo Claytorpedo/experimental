@@ -53,7 +53,7 @@ TEST_CASE("enum_reflection type_name", "[Tools][enum_reflection]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
@@ -82,7 +82,7 @@ TEST_CASE("enum_reflection name", "[Tools][enum_reflection]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
@@ -95,7 +95,7 @@ TEST_CASE("enum_reflection size", "[Tools][enum_reflection]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
@@ -137,7 +137,7 @@ TEST_CASE("enum_reflection values", "[Tools][enum_reflection]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
@@ -150,7 +150,7 @@ TEST_CASE("enum_reflection min_val", "[Tools][enum_reflection]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
@@ -163,7 +163,7 @@ TEST_CASE("enum_reflection max_val", "[Tools][enum_reflection]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
@@ -181,8 +181,8 @@ TEST_CASE("enum_reflection names", "[Tools][enum_reflection]") {
 
 			static_assert(
 				std::is_same_v<
-					decltype(enums::names<Contiguous>()),
-					const std::array<zstring_view, 5>&>);
+				decltype(enums::names<Contiguous>()),
+				const std::array<zstring_view, 5>&>);
 		}
 		{
 			constexpr std::array expected = {
@@ -210,7 +210,7 @@ TEST_CASE("enum_reflection names", "[Tools][enum_reflection]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
@@ -244,7 +244,7 @@ TEST_CASE("enum_reflection try_cast<E>", "[Tools][enum_reflection]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
@@ -276,7 +276,7 @@ TEST_CASE("enum_reflection try_cast<string_view>", "[Tools][enum_reflection]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
@@ -321,7 +321,7 @@ TEST_CASE("enum_reflection try_cast_icase<string_view>", "[Tools][enum_reflectio
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
@@ -859,7 +859,7 @@ TEST_CASE("enum_reflection index(static)", "[Tools][enum_reflection]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
@@ -924,7 +924,7 @@ TEST_CASE("enum_reflection index(value)", "[Tools][enum_reflection]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
@@ -937,6 +937,6 @@ TEST_CASE("enum_reflection try_get_index(value)", "[Tools][enum_reflection]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }

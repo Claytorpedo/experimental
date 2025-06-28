@@ -25,22 +25,133 @@ enum class E2 {
 	One = 1,
 	Five = 5,
 	Ten = 10,
-	Twentry = 20
+	Twenty = 20
 };
 
 static_assert(!std::is_default_constructible_v<enum_map<E1, int>>);
-static_assert(std::is_constructible_v<enum_map<E1, int>, int>);
-static_assert(!std::is_constructible_v<enum_map<E1, int>, int, int>);
-static_assert(std::is_constructible_v<enum_map<E1, int>, int, int, int>);
-static_assert(!std::is_constructible_v<enum_map<E1, int>, int, int, int, int>);
 
-static_assert(!std::is_default_constructible_v<enum_map<E2, int>>);
-static_assert(std::is_constructible_v<enum_map<E2, int>, int>);
-static_assert(!std::is_constructible_v<enum_map<E2, int>, int, int>);
-static_assert(!std::is_constructible_v<enum_map<E2, int>, int, int, int>);
-static_assert(std::is_constructible_v<enum_map<E2, int>, int, int, int, int>);
-static_assert(!std::is_constructible_v<enum_map<E2, int>, int, int, int, int, int>);
+}
 
+TEST_CASE("Enum map arg construction", "[Tools][enum_map]") {
+	auto test = [] {
+		{
+			static_assert(enum_detail::IsArgList<enum_map<E1, int>, 3,
+				decltype(enum_arg<E1::One>(1)),
+				decltype(enum_arg<E1::Two>(1)),
+				decltype(enum_arg<E1::Three>(1))>);
+
+			static_assert(!enum_detail::IsArgList<enum_map<E1, int>, 3,
+				decltype(enum_arg<E1::One>(1)),
+				decltype(enum_arg<E1::Three>(1)), // dupe
+				decltype(enum_arg<E1::Three>(1))>);
+
+			const enum_map<E1, int> map(
+				enum_arg<E1::One>(1),
+				enum_arg<E1::Two>(2),
+				enum_arg<E1::Three>(3));
+
+			CTP_CHECK(map[E1::One] == 1);
+			CTP_CHECK(map[E1::Two] == 2);
+			CTP_CHECK(map[E1::Three] == 3);
+		}
+		{
+			// out of order is fine
+			const enum_map<E1, int> map(
+				enum_arg<E1::Two>(2),
+				enum_arg<E1::One>(1),
+				enum_arg<E1::Three>(3));
+
+			CTP_CHECK(map[E1::One] == 1);
+			CTP_CHECK(map[E1::Two] == 2);
+			CTP_CHECK(map[E1::Three] == 3);
+		}
+		{
+			const enum_map<E2, int> map{
+				std::pair{E2::One, 1},
+				std::pair{E2::Five, 5},
+				std::pair{E2::Ten, 10},
+				std::pair{E2::Twenty, 20}};
+
+			CTP_CHECK(map[E2::One] == 1);
+			CTP_CHECK(map[E2::Five] == 5);
+			CTP_CHECK(map[E2::Ten] == 10);
+			CTP_CHECK(map[E2::Twenty] == 20);
+		}
+
+		return true;
+	};
+
+	TEST_CONSTEXPR bool RunConstexpr = test();
+	test();
+}
+
+TEST_CASE("Enum map arg construction with defaults", "[Tools][enum_map]") {
+	auto test = [] {
+		{
+			const enum_map<E1, int> map(
+				enum_default(1),
+				enum_arg<E1::Two>(2),
+				enum_arg<E1::Three>(3));
+
+			CTP_CHECK(map[E1::One] == 1);
+			CTP_CHECK(map[E1::Two] == 2);
+			CTP_CHECK(map[E1::Three] == 3);
+		}
+		{
+			const enum_map<E1, int> map(
+				enum_default(7),
+				enum_arg<E1::Two>(2));
+
+			CTP_CHECK(map[E1::One] == 7);
+			CTP_CHECK(map[E1::Two] == 2);
+			CTP_CHECK(map[E1::Three] == 7);
+		}
+		{
+			const enum_map<E1, int> map(enum_default(7));
+
+			CTP_CHECK(map[E1::One] == 7);
+			CTP_CHECK(map[E1::Two] == 7);
+			CTP_CHECK(map[E1::Three] == 7);
+		}
+
+		// std::pair
+		{
+			const enum_map<E2, int> map{
+				enum_default(7),
+				std::pair{E2::Five, 5},
+				std::pair{E2::Ten, 10},
+				std::pair{E2::Twenty, 20}};
+
+			CTP_CHECK(map[E2::One] == 7);
+			CTP_CHECK(map[E2::Five] == 5);
+			CTP_CHECK(map[E2::Ten] == 10);
+			CTP_CHECK(map[E2::Twenty] == 20);
+		}
+		{
+			const enum_map<E2, int> map{
+				enum_default(7),
+				std::pair{E2::Five, 5},
+				std::pair{E2::Twenty, 20}};
+
+			CTP_CHECK(map[E2::One] == 7);
+			CTP_CHECK(map[E2::Five] == 5);
+			CTP_CHECK(map[E2::Ten] == 7);
+			CTP_CHECK(map[E2::Twenty] == 20);
+		}
+		{
+			const enum_map<E2, int> map{enum_default(7)};
+
+			CTP_CHECK(map[E2::One] == 7);
+			CTP_CHECK(map[E2::Five] == 7);
+			CTP_CHECK(map[E2::Ten] == 7);
+			CTP_CHECK(map[E2::Twenty] == 7);
+		}
+
+		return true;
+	};
+
+	TEST_CONSTEXPR bool RunConstexpr = test();
+	test();
 }
 
 TEST_CASE("Enum map basic ops", "[Tools][enum_map]") {
@@ -48,7 +159,10 @@ TEST_CASE("Enum map basic ops", "[Tools][enum_map]") {
 		const enum_map<OneVal, int> oneval{1};
 		CTP_CHECK(oneval[OneVal::One] == 1);
 
-		enum_map<E1, int> map(1, 2, 3);
+		enum_map<E1, int> map(
+			enum_arg<E1::One>(1),
+			enum_arg<E1::Two>(2),
+			enum_arg<E1::Three>(3));
 		CTP_CHECK(map[E1::One] == 1);
 		CTP_CHECK(map[E1::Two] == 2);
 		CTP_CHECK(map[E1::Three] == 3);
@@ -85,7 +199,7 @@ TEST_CASE("Enum map basic ops", "[Tools][enum_map]") {
 		CTP_CHECK(copy_assign[E1::Three] == 1);
 
 		// Move assignment
-		enum_map<E1, int> move_assign(0, 0, 0);
+		enum_map<E1, int> move_assign(0);
 		move_assign = std::move(copy_assign);
 		CTP_CHECK(move_assign[E1::One] == 3);
 		CTP_CHECK(move_assign[E1::Two] == 4);
@@ -111,8 +225,14 @@ TEST_CASE("Enum map basic ops", "[Tools][enum_map]") {
 
 		{
 			// swap
-			auto a = enum_map<E1, int>{1,2,3};
-			auto b = enum_map<E1, int>{4,5,6};
+			auto a = enum_map<E1, int>{
+				enum_arg<E1::One>(1),
+				enum_arg<E1::Two>(2),
+				enum_arg<E1::Three>(3)};
+			auto b = enum_map<E1, int>{
+				enum_arg<E1::One>(4),
+				enum_arg<E1::Two>(5),
+				enum_arg<E1::Three>(6)};
 			a.swap(b);
 			for (E1 e : a.keys()) {
 				CTP_CHECK(a[e] == std::to_underlying(e) + 4);
@@ -128,7 +248,7 @@ TEST_CASE("Enum map basic ops", "[Tools][enum_map]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
@@ -137,7 +257,11 @@ TEST_CASE("Enum map basic ops non-trivial", "[Tools][enum_map]") {
 		const enum_map<OneVal, std::string> oneval{"one"};
 		CTP_CHECK(oneval[OneVal::One] == "one"sv);
 
-		enum_map<E1, std::string> map("one", "two", "three");
+		enum_map<E1, std::string> map(
+			enum_arg<E1::One>("one"),
+			enum_arg<E1::Two>("two"),
+			enum_arg<E1::Three>("three"));
+
 		CTP_CHECK(map[E1::One] == "one");
 		CTP_CHECK(map[E1::Two] == "two");
 		CTP_CHECK(map[E1::Three] == "three");
@@ -162,14 +286,14 @@ TEST_CASE("Enum map basic ops non-trivial", "[Tools][enum_map]") {
 		CTP_CHECK(mv[E1::Three] == "one"sv);
 
 		// Copy assignment
-		enum_map<E1, std::string> copy_assign("a", "b", "c");
+		enum_map<E1, std::string> copy_assign("a");
 		copy_assign = copy;
 		CTP_CHECK(copy_assign[E1::One] == "three"sv);
 		CTP_CHECK(copy_assign[E1::Two] == "fourextraextraextralong"sv);
 		CTP_CHECK(copy_assign[E1::Three] == "one"sv);
 
 		// Move assignment
-		enum_map<E1, std::string> move_assign("x", "y", "z");
+		enum_map<E1, std::string> move_assign("x");
 		move_assign = std::move(copy_assign);
 		CTP_CHECK(move_assign[E1::One] == "three"sv);
 		CTP_CHECK(move_assign[E1::Two] == "fourextraextraextralong"sv);
@@ -212,7 +336,7 @@ TEST_CASE("Enum map basic ops non-trivial", "[Tools][enum_map]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
@@ -222,7 +346,10 @@ TEST_CASE("indexible_enum_map", "[Tools][enum_map]") {
 		CTP_CHECK(oneval[OneVal::One] == 1);
 		CTP_CHECK(oneval[0] == 1);
 
-		indexible_enum_map<E1, int> e(1, 2, 3);
+		indexible_enum_map<E1, int> e{
+			enum_arg<E1::One>(1),
+			enum_arg<E1::Two>(2),
+			enum_arg<E1::Three>(3)};
 		CTP_CHECK(e[E1::One] == 1);
 		CTP_CHECK(e[E1::Two] == 2);
 		CTP_CHECK(e[E1::Three] == 3);
@@ -252,14 +379,17 @@ TEST_CASE("indexible_enum_map", "[Tools][enum_map]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
-
 TEST_CASE("Enum map iterators", "[Tools][enum_map]") {
 	auto test = [] {
-		enum_map<E1, int> map = {1,2,3};
+		enum_map<E1, int> map = {
+			enum_arg<E1::One>(1),
+			enum_arg<E1::Two>(2),
+			enum_arg<E1::Three>(3)};
+
 		{
 			int i = 0;
 			for (int e : map.values())
@@ -282,7 +412,10 @@ TEST_CASE("Enum map iterators", "[Tools][enum_map]") {
 		CTP_CHECK(*(--map.cend()) == std::pair{E1::Three, 3});
 		CTP_CHECK(*map.last() == std::pair{E1::Three, 3});
 
-		const enum_map<E1, int> cmap = {1,2,3};
+		const enum_map<E1, int> cmap = {
+			enum_arg<E1::One>(1),
+			enum_arg<E1::Two>(2),
+			enum_arg<E1::Three>(3)};
 
 		CTP_CHECK(*cmap.begin() == std::pair{E1::One, 1});
 		CTP_CHECK(*cmap.cbegin() == std::pair{E1::One, 1});
@@ -293,13 +426,16 @@ TEST_CASE("Enum map iterators", "[Tools][enum_map]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
 TEST_CASE("enum_map.at", "[Tools][enum_map]") {
 	auto test = [] {
-		enum_map<E1, int> map = {1,2,3};
+		enum_map<E1, int> map(
+			enum_arg<E1::One>(1),
+			enum_arg<E1::Two>(2),
+			enum_arg<E1::Three>(3));
 
 		CTP_CHECK(map.at(E1::One) == 1);
 		CTP_CHECK(map.at(E1::Three) == 3);
@@ -309,13 +445,16 @@ TEST_CASE("enum_map.at", "[Tools][enum_map]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
 TEST_CASE("enum_map.fill", "[Tools][enum_map]") {
 	auto test = [] {
-		enum_map<E1, int> map = {1,2,3};
+		enum_map<E1, int> map{
+			enum_arg<E1::One>(1),
+			enum_arg<E1::Two>(2),
+			enum_arg<E1::Three>(3)};
 
 		map.fill(7);
 		for (auto [key, val] : map)
@@ -328,7 +467,7 @@ TEST_CASE("enum_map.fill", "[Tools][enum_map]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
@@ -352,14 +491,17 @@ TEST_CASE("Enum map non-default construct", "[Tools][enum_map]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
 TEST_CASE("Enum map comparison", "[Tools][enum_map]") {
 	auto test = [] {
-		const enum_map<E1, int> a = {1,2,3};
-		enum_map<E1, int> b = {1,2,3};
+		const enum_map<E1, int> a(
+			enum_arg<E1::One>(1),
+			enum_arg<E1::Two>(2),
+			enum_arg<E1::Three>(3));
+		enum_map<E1, int> b = a;
 
 		CTP_CHECK(a == b);
 		CTP_CHECK(a <= b);
@@ -387,13 +529,17 @@ TEST_CASE("Enum map comparison", "[Tools][enum_map]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
 
 TEST_CASE("Enum map with an enum that has gaps", "[Tools][enum_map]") {
 	auto test = [] {
-		enum_map<E2, int> map = {1,2,3,4};
+		enum_map<E2, int> map = {
+			enum_arg<E2::One>(1),
+			enum_arg<E2::Five>(2),
+			enum_arg<E2::Ten>(3),
+			enum_arg<E2::Twenty>(4)};
 
 		int i = 0;
 		for (auto [key, val] : map)
@@ -411,6 +557,6 @@ TEST_CASE("Enum map with an enum that has gaps", "[Tools][enum_map]") {
 		return true;
 	};
 
-	[[maybe_unused]] static constexpr bool RunConstexpr = test();
+	TEST_CONSTEXPR bool RunConstexpr = test();
 	test();
 }
