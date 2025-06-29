@@ -17,13 +17,13 @@ namespace conversions {
 struct Vec2 : Vectorizer<Vec2, unsigned, 2> {
 	unsigned a, b;
 	using Vectorizer::Vectorizer;
-	CTP_MAKE_VECTORIZER_LIST(&Vec2::a, &Vec2::b)
+	CTP_MAKE_VECTORIZER_LIST(Vec2, a, b)
 };
 
 struct Vec3 : Vectorizer<Vec3, int, 3> {
 	int d[3];
 	using Vectorizer::Vectorizer;
-	CTP_MAKE_VECTORIZER_LIST(&Vec3::d)
+	CTP_MAKE_VECTORIZER_LIST(Vec3, d)
 };
 
 // Test constructor constraints.
@@ -132,21 +132,21 @@ struct VecArray4 : Vectorizer<VecArray4, int, 4> {
 	int data[4];
 	using Vectorizer::Vectorizer;
 	constexpr auto operator<=>(const VecArray4& rhs) const noexcept = default;
-	CTP_MAKE_VECTORIZER_LIST(&VecArray4::data)
+	CTP_MAKE_VECTORIZER_LIST(VecArray4, data)
 };
 
 struct VecStdArray4 : Vectorizer<VecStdArray4, int, 4> {
 	std::array<int, 4> data;
 	using Vectorizer::Vectorizer;
 	constexpr auto operator<=>(const VecStdArray4& rhs) const noexcept = default;
-	CTP_MAKE_VECTORIZER_LIST(&VecStdArray4::data)
+	CTP_MAKE_VECTORIZER_LIST(VecStdArray4, data)
 };
 
 struct VecInt4 : Vectorizer<VecInt4, int, 4> {
 	int a, b, c, d;
 	using Vectorizer::Vectorizer;
 	constexpr auto operator<=>(const VecInt4& rhs) const noexcept = default;
-	CTP_MAKE_VECTORIZER_LIST(&VecInt4::a, &VecInt4::b, &VecInt4::c, &VecInt4::d)
+	CTP_MAKE_VECTORIZER_LIST(VecInt4, a, b, c, d)
 };
 
 constexpr int conversion_tests() {
@@ -154,13 +154,13 @@ constexpr int conversion_tests() {
 		using Vectorizer::Vectorizer;
 		int a, b, c, d, e;
 		constexpr auto operator<=>(const Veci&) const noexcept = default;
-		CTP_MAKE_VECTORIZER_LIST(&Veci::a, &Veci::b, &Veci::c, &Veci::d, &Veci::e)
+		CTP_MAKE_VECTORIZER_LIST(Veci, a, b, c, d, e)
 	};
 	struct Vecu : Vectorizer<Vecu, unsigned, 5> {
 		using Vectorizer::Vectorizer;
 		unsigned x, y, z, p, q;
 		constexpr auto operator<=>(const Vecu&) const noexcept = default;
-		CTP_MAKE_VECTORIZER_LIST(&Vecu::x, &Vecu::y, &Vecu::z, &Vecu::p, &Vecu::q)
+		CTP_MAKE_VECTORIZER_LIST(Vecu, x, y, z, p, q)
 	};
 
 	// Convert to unsigned and back.
@@ -192,7 +192,7 @@ constexpr int operation_tests() {
 		constexpr Vec& operator*=(int i) { return apply([](int& v, int o) { v *= o; }, i); }
 		constexpr Vec& operator*=(Vec v) { return apply([](int& v, int o) { v *= o; }, v); }
 
-		CTP_MAKE_VECTORIZER_LIST(&Vec::x, &Vec::y, &Vec::z)
+		CTP_MAKE_VECTORIZER_LIST(Vec, x, y, z)
 	};
 
 	// Addition.

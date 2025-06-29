@@ -1,7 +1,5 @@
 #include <Tools/debug.hpp>
 
-#if CTP_DEBUG
-
 #include <Tools/charconv.hpp>
 #include <Tools/windows.hpp>
 
@@ -17,7 +15,7 @@
 #include <debugapi.h>
 #endif
 
-#if CTP_WINDOWS
+#if CTP_WINDOWS && CTP_DEBUG
 #define SUPPORTS_DEBUGGER_LOGING 1
 #else
 #define SUPPORTS_DEBUGGER_LOGING 0
@@ -73,7 +71,7 @@ void Log(Stream stream, std::string_view action, std::string_view expr, std::str
 	const auto fileName = file.substr(lastSlash == std::string_view::npos ? 0 : lastSlash + 1);
 
 	const ToCharsConverter<int> converter(line);
-	const auto lineStr = converter.GetView();
+	const auto lineStr = converter.view();
 
 	std::size_t clickableFilePathOffset = 0;
 
@@ -178,6 +176,8 @@ void Log(Stream stream, std::string_view action, std::string_view expr, std::str
 #endif // SUPPORTS_DEBUGGER_LOGING
 }
 
+#if CTP_DEBUG
+
 bool IsDebuggerAttached() noexcept {
 #if CTP_WINDOWS
 	return IsDebuggerPresent() != 0;
@@ -199,6 +199,6 @@ void WaitForDebugger() noexcept {
 	}
 }
 
-} // ctp::debug
-
 #endif // CTP_DEBUG
+
+} // ctp::debug

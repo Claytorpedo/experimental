@@ -2,6 +2,7 @@
 #define INCLUDE_CTP_TOOLS_CHARCONV_HPP
 
 #include "config.hpp"
+#include "small_string.hpp"
 
 #include <array>
 #include <charconv>
@@ -21,10 +22,10 @@ template <std::integral I>
 static constexpr auto max_char_digits_10_v = max_char_digits_10<I>::value;
 
 template <typename U, typename I>
-concept IsToCharsCompatible = 
-	std::integral<I> && std::integral<U> &&
-	!std::is_same_v<I, bool> && !std::is_same_v<U, bool> &&
-	max_char_digits_10_v<U> <= max_char_digits_10_v<I>;
+concept IsToCharsCompatible =
+std::integral<I> && std::integral<U> &&
+!std::is_same_v<I, bool> && !std::is_same_v<U, bool>&&
+max_char_digits_10_v<U> <= max_char_digits_10_v<I>;
 
 template <std::integral I>
 struct ToCharsConverter {
@@ -47,20 +48,18 @@ struct ToCharsConverter {
 	template <IsToCharsCompatible<I> U>
 	constexpr std::string_view operator()(U i) noexcept {
 		convert(i);
-		return GetView();
+		return view();
 	}
 
-	[[nodiscard]] constexpr std::string_view GetView() const noexcept { return std::string_view{mem.data(), size}; }
-	constexpr operator std::string_view() const noexcept { return GetView(); }
+	[[nodiscard]] constexpr std::string_view view() const noexcept { return std::string_view{mem.data(), size}; }
+	constexpr operator std::string_view() const noexcept { return view(); }
 };
 
 namespace detail {
 // From tests, this only helps MSVC.
 template <std::size_t ReducedSize, std::size_t FullSize>
 consteval auto ShrinkToFit(const std::array<char, FullSize>& arr) {
-	std::array<char, ReducedSize> out{};
-	std::copy_n(arr.begin(), ReducedSize, out.data());
-	return out;
+	return fixed_string<ReducedSize>{arr.data(), ReducedSize};
 }
 } // detail
 

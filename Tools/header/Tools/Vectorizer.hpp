@@ -6,6 +6,7 @@
 #include "CrtpHelper.hpp"
 #include "debug.hpp"
 #include "iterator.hpp"
+#include "macros.hpp"
 #include "reverse_iterator.hpp"
 #include "type_traits.hpp"
 
@@ -37,8 +38,10 @@ consteval auto make_vectorizer_list(concepts::AllExactlySame auto... MemberPtrs)
 }
 
 // Declare get_vectorizer_list with given pointer-to-member list.
-#define CTP_MAKE_VECTORIZER_LIST(...) \
-	static constexpr auto get_vectorizer_list() noexcept { return make_vectorizer_list(__VA_ARGS__); }
+#define CTP_MAKE_VECTORIZER_LIST(CLASS_NAME, ...) \
+	static constexpr auto get_vectorizer_list() noexcept {\
+	return make_vectorizer_list(CTP_MACRO_FUNC_TWO_PARAMS(CTP_MAKE_CLASS_PTR, CLASS_NAME, __VA_ARGS__));\
+}
 
 template <typename Derived, typename ValueType>
 class vectorizer_iterator : public iterator_t<vectorizer_iterator<Derived, ValueType>, ValueType> {
@@ -111,7 +114,7 @@ class vectorizer_iterator : public iterator_t<vectorizer_iterator<Derived, Value
 		ctpAssert(d_ != nullptr); // invalid iterator
 		ctpAssert(i_ <= d_->size()); // peeking out of range
 
-		if CTP_IS_CONSTEVAL{
+		if CTP_IS_CONSTEVAL {
 			return consteval_peek();
 		} else {
 			return reinterpret_cast<ValueType*>(d_) + i_;

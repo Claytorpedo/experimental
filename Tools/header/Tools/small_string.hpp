@@ -948,7 +948,7 @@ struct fixed_string_options : small_storage::default_options {
 template <std::size_t NumChars, class Alloc = trivial_init_allocator<char>, class Options = fixed_string_options>
 using fixed_string = small_string_detail::make_basic_t<char, NumChars, false, Alloc, Options>;
 
-// A statically sized string with local storage for NumChars. Null terminated.
+// A statically sized string with local storage for NumChars, plus the null terminator. Is null terminated.
 // Users are expected to ensure they do not attempt to store more than NumChars characters.
 template <std::size_t NumChars, class Alloc = trivial_init_allocator<char>, class Options = fixed_string_options>
 using fixed_zstring = small_string_detail::make_basic_t<char, NumChars, true, Alloc, Options>;
@@ -967,7 +967,7 @@ struct small_string_options : small_storage::default_options {
 template <std::size_t CharsInSmallMode, class Alloc = trivial_init_allocator<char>, class Options = small_string_options>
 using small_string = small_string_detail::make_basic_t<char, CharsInSmallMode, false, Alloc, Options>;
 
-// A string with enough local storage for at least NumItemsInSmallMode. Null terminated.
+// A string with enough local storage for at least NumItemsInSmallMode, plus the null terminator. Is null terminated.
 // Will allocate using Alloc and grow if it runs out of space in local storage.
 template <std::size_t CharsInSmallMode, class Alloc = trivial_init_allocator<char>, class Options = small_string_options>
 using small_zstring = small_string_detail::make_basic_t<char, CharsInSmallMode, true, Alloc, Options>;

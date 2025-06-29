@@ -24,6 +24,7 @@
     <ClInclude Include="$(Interface)exception.hpp" />
     <ClInclude Include="$(Interface)iterator.hpp" />
     <ClInclude Include="$(Interface)iter_move.hpp" />
+    <ClInclude Include="$(Interface)macros.hpp" />
     <ClInclude Include="$(Interface)move_iterator.hpp" />
     <ClInclude Include="$(Interface)reverse_iterator.hpp" />
     <ClInclude Include="$(Interface)scope.hpp" />
